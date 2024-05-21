@@ -2,7 +2,7 @@ import cherrypy
 from pymongo import MongoClient
 from bson.json_util import dumps
 
-client = MongoClient('mongodb://localhost:@@@@@/')
+client = MongoClient('mongodb://localhost:27017/')
 db = client.catalog.db
 users = db.users
 logistic_points = db.logistic_points
