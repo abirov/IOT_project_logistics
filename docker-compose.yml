@@ -1,0 +1,75 @@
+version: '3.7'
+
+services:
+  vehicle-connector:
+    build:
+      context: .
+      dockerfile: ./vehicle_connector/Dockerfile
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mqtt-broker
+
+  logistics-connector:
+    build:
+      context: .
+      dockerfile: ./logistics_connector/Dockerfile
+    ports:
+      - "5001:5001"
+
+  user-web-app:
+    build:
+      context: .
+      dockerfile: ./user_web_app/Dockerfile
+    ports:
+      - "5002:5002"
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: ./catalog_service/Dockerfile
+    ports:
+      - "5003:5003"
+    depends_on:
+      - postgres
+
+  driver-reputation:
+    build:
+      context: .
+      dockerfile: ./driver_reputation/Dockerfile
+    depends_on:
+      - mqtt-broker
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: ./telegram_bot/Dockerfile
+    ports:
+      - "5004:5004"
+  
+  mqtt-broker:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  influxdb:
+    image: influxdb:latest
+    ports:
+      - "8086:8086"
+
+  telegraf:
+    image: telegraf:latest
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
