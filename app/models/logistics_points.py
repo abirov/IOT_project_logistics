@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from bson import ObjectId
 
 client = MongoClient('localhost', 27017)
 db = client['logistics_db']
@@ -18,4 +19,3 @@ def delete_logistics_point(point_id):
 
 def list_logistics_points():
     return list(logistics_points_collection.find())
-
