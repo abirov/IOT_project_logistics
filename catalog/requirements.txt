@@ -1,6 +1,0 @@
-Flask
-Flask-RESTful
-Flask-SQLAlchemy
-Flask-Migrate
-psycopg2
-
