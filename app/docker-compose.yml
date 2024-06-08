@@ -1,0 +1,69 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  catalog_service:
+    build: ./app/services
+    container_name: catalog_service
+    depends_on:
+      - mongodb
+    ports:
+      - "8080:8080"
+
+  web_app:
+    build: ./app/web
+    container_name: web_app
+    depends_on:
+      - catalog_service
+    ports:
+      - "8081:8081"
+
+  vehicle_simulation:
+    build: ./app/simulations
+    container_name: vehicle_simulation
+    depends_on:
+      - mongodb
+    environment:
+      - MQTT_BROKER=broker
+    ports:
+      - "1883:1883"
+
+  telegram_bot:
+    build: ./telegram_bot
+    container_name: telegram_bot
+    depends_on:
+      - mongodb
+
+  telegraf:
+    build: ./config
+    container_name: telegraf
+    depends_on:
+      - mongodb
+      - influxdb
+    environment:
+      - HOST_PROC=/rootfs/proc
+      - HOST_SYS=/rootfs/sys
+      - HOST_ETC=/rootfs/etc
+    volumes:
+      - /proc:/rootfs/proc:ro
+      - /sys:/rootfs/sys:ro
+      - /etc:/rootfs/etc:ro
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+
+volumes:
+  mongo_data:
+  influxdb_data:
