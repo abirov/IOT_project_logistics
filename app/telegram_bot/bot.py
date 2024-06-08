@@ -1,4 +1,5 @@
 import requests
+import time
 import json
 from pymongo import MongoClient
 
@@ -27,4 +28,3 @@ if __name__ == '__main__':
     while True:
         check_delivery_status()
         time.sleep(60)  # Check every minute
-
