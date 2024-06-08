@@ -14,4 +14,3 @@ if __name__ == '__main__':
     cherrypy.tree.mount(WebApp(), '/')
     cherrypy.engine.start()
     cherrypy.engine.block()
-
