@@ -1,1 +1,7 @@
+cherrypy
+pymongo
+paho-mqtt
+telegraf
+jinja2
+requests
 
