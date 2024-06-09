@@ -1,9 +1,43 @@
+# /app/services/catalog_service.py
 import cherrypy
+import json
 from bson import ObjectId
-from app.models.logistics_points import (create_logistics_point, get_logistics_point, update_logistics_point, delete_logistics_point, list_logistics_points)
-from app.models.vehicles import (create_vehicle, get_vehicle, update_vehicle, delete_vehicle, list_vehicles)
-from app.models.drivers import (create_driver, get_driver, update_driver, delete_driver, list_drivers)
-from app.models.warehouses import (create_warehouse, get_warehouse, update_warehouse, delete_warehouse, list_warehouses)
+from pymongo import MongoClient
+import paho.mqtt.client as mqtt
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, ObjectId):
+            return str(o)
+        return json.JSONEncoder.default(self, o)
+
+client = MongoClient('mongodb', 27017)
+db = client['logistics_db']
+logistics_points_collection = db['logistics_points']
+vehicles_collection = db['vehicles']
+drivers_collection = db['drivers']
+warehouses_collection = db['warehouses']
+
+BROKER = 'mqtt_broker'
+PORT = 1883
+TOPIC = 'vehicles/status'
+
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected to MQTT broker with result code {rc}")
+    client.subscribe(TOPIC)
+
+def on_message(client, userdata, msg):
+    message = json.loads(msg.payload.decode())
+    vehicle_id = message['vehicle_id']
+    status = message['status']
+    vehicles_collection.update_one({'_id': ObjectId(vehicle_id)}, {'$set': {'status': status}})
+    print(f"Updated vehicle {vehicle_id} with status {status}")
+
+mqtt_client = mqtt.Client()
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+mqtt_client.connect(BROKER, PORT, 60)
+mqtt_client.loop_start()
 
 class CatalogService:
     @cherrypy.expose
@@ -11,21 +45,21 @@ class CatalogService:
     def logistics_points(self, point_id=None):
         if cherrypy.request.method == 'GET':
             if point_id:
-                point = get_logistics_point(ObjectId(point_id))
-                return point
+                point = logistics_points_collection.find_one({'_id': ObjectId(point_id)})
+                return JSONEncoder().encode(point)
             else:
-                points = list_logistics_points()
-                return points
+                points = list(logistics_points_collection.find())
+                return JSONEncoder().encode(points)
         elif cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            create_logistics_point(data)
+            logistics_points_collection.insert_one(data)
             return {'status': 'success'}
         elif cherrypy.request.method == 'PUT':
             data = cherrypy.request.json
-            update_logistics_point(ObjectId(point_id), data)
+            logistics_points_collection.update_one({'_id': ObjectId(point_id)}, {'$set': data})
             return {'status': 'success'}
         elif cherrypy.request.method == 'DELETE':
-            delete_logistics_point(ObjectId(point_id))
+            logistics_points_collection.delete_one({'_id': ObjectId(point_id)})
             return {'status': 'success'}
 
     @cherrypy.expose
@@ -33,21 +67,21 @@ class CatalogService:
     def vehicles(self, vehicle_id=None):
         if cherrypy.request.method == 'GET':
             if vehicle_id:
-                vehicle = get_vehicle(ObjectId(vehicle_id))
-                return vehicle
+                vehicle = vehicles_collection.find_one({'_id': ObjectId(vehicle_id)})
+                return JSONEncoder().encode(vehicle)
             else:
-                vehicles = list_vehicles()
-                return vehicles
+                vehicles = list(vehicles_collection.find())
+                return JSONEncoder().encode(vehicles)
         elif cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            create_vehicle(data)
+            vehicles_collection.insert_one(data)
             return {'status': 'success'}
         elif cherrypy.request.method == 'PUT':
             data = cherrypy.request.json
-            update_vehicle(ObjectId(vehicle_id), data)
+            vehicles_collection.update_one({'_id': ObjectId(vehicle_id)}, {'$set': data})
             return {'status': 'success'}
         elif cherrypy.request.method == 'DELETE':
-            delete_vehicle(ObjectId(vehicle_id))
+            vehicles_collection.delete_one({'_id': ObjectId(vehicle_id)})
             return {'status': 'success'}
 
     @cherrypy.expose
@@ -55,21 +89,21 @@ class CatalogService:
     def drivers(self, driver_id=None):
         if cherrypy.request.method == 'GET':
             if driver_id:
-                driver = get_driver(ObjectId(driver_id))
-                return driver
+                driver = drivers_collection.find_one({'_id': ObjectId(driver_id)})
+                return JSONEncoder().encode(driver)
             else:
-                drivers = list_drivers()
-                return drivers
+                drivers = list(drivers_collection.find())
+                return JSONEncoder().encode(drivers)
         elif cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            create_driver(data)
+            drivers_collection.insert_one(data)
             return {'status': 'success'}
         elif cherrypy.request.method == 'PUT':
             data = cherrypy.request.json
-            update_driver(ObjectId(driver_id), data)
+            drivers_collection.update_one({'_id': ObjectId(driver_id)}, {'$set': data})
             return {'status': 'success'}
         elif cherrypy.request.method == 'DELETE':
-            delete_driver(ObjectId(driver_id))
+            drivers_collection.delete_one({'_id': ObjectId(driver_id)})
             return {'status': 'success'}
 
     @cherrypy.expose
@@ -77,24 +111,23 @@ class CatalogService:
     def warehouses(self, warehouse_id=None):
         if cherrypy.request.method == 'GET':
             if warehouse_id:
-                warehouse = get_warehouse(ObjectId(warehouse_id))
-                return warehouse
+                warehouse = warehouses_collection.find_one({'_id': ObjectId(warehouse_id)})
+                return JSONEncoder().encode(warehouse)
             else:
-                warehouses = list_warehouses()
-                return warehouses
+                warehouses = list(warehouses_collection.find())
+                return JSONEncoder().encode(warehouses)
         elif cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            create_warehouse(data)
+            warehouses_collection.insert_one(data)
             return {'status': 'success'}
         elif cherrypy.request.method == 'PUT':
             data = cherrypy.request.json
-            update_warehouse(ObjectId(warehouse_id), data)
+            warehouses_collection.update_one({'_id': ObjectId(warehouse_id)}, {'$set': data})
             return {'status': 'success'}
         elif cherrypy.request.method == 'DELETE':
-            delete_warehouse(ObjectId(warehouse_id))
+            warehouses_collection.delete_one({'_id': ObjectId(warehouse_id)})
             return {'status': 'success'}
 
-# Main application to run the services
 if __name__ == '__main__':
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
     cherrypy.tree.mount(CatalogService(), '/')
