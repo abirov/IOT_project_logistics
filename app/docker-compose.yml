@@ -30,8 +30,9 @@ services:
     container_name: vehicle_simulation
     depends_on:
       - mongodb
+      - mqtt_broker
     environment:
-      - MQTT_BROKER=broker
+      - MQTT_BROKER=mqtt_broker
     ports:
       - "1883:1883"
 
@@ -56,6 +57,15 @@ services:
       - /sys:/rootfs/sys:ro
       - /etc:/rootfs/etc:ro
 
+  mqtt_broker:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
   influxdb:
     image: influxdb:1.8
     container_name: influxdb
@@ -67,3 +77,5 @@ services:
 volumes:
   mongo_data:
   influxdb_data:
+  mosquitto_data:
+  mosquitto_log:
