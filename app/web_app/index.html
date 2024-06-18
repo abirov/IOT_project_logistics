@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logistics Platform</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Logistics Platform</h1>
+    </header>
+    <section>
+        <h2>Vehicles</h2>
+        <ul id="vehicles">
+            {% for vehicle in vehicles %}
+                <li>{{ vehicle.name }} - Status: {{ vehicle.status }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section>
+        <h2>Logistics Points</h2>
+        <ul id="logisticsPoints">
+            {% for point in logistics_points %}
+                <li>{{ point.name }} - Address: {{ point.address }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section>
+        <h2>Submit Feedback</h2>
+        <form id="feedbackForm" onsubmit="submitFeedback(event)">
+            <label for="driver_id">Driver ID:</label>
+            <input type="text" id="driver_id" name="driver_id"><br>
+            <label for="warehouse_id">Warehouse ID:</label>
+            <input type="text" id="warehouse_id" name="warehouse_id"><br>
+            <label for="score">Score:</label>
+            <input type="number" step="0.1" id="score" name="score" required><br>
+            <label for="comments">Comments:</label>
+            <textarea id="comments" name="comments" required></textarea><br>
+            <button type="submit">Submit</button>
+        </form>
+        <div id="feedbackResponse"></div>
+    </section>
+    <script>
+        async function submitFeedback(event) {
+            event.preventDefault();
+            const form = document.getElementById('feedbackForm');
+            const driver_id = form.driver_id.value;
+            const warehouse_id = form.warehouse_id.value;
+            const score = form.score.value;
+            const comments = form.comments.value;
+            
+            const response = await fetch('/submit_feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ driver_id, warehouse_id, score, comments })
+            });
+            const result = await response.json();
+            document.getElementById('feedbackResponse').innerText = JSON.stringify(result);
+        }
+    </script>
+</body>
+</html>
