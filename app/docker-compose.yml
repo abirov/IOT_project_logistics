@@ -10,37 +10,41 @@ services:
       - mongo_data:/data/db
 
   catalog_service:
-    build: ./app/services
+    build: ./app/catalog_service
     container_name: catalog_service
     depends_on:
       - mongodb
+      - mqtt_broker
     ports:
       - "8080:8080"
 
+  reputation_service:
+    build: ./app/reputation_service
+    container_name: reputation_service
+    depends_on:
+      - catalog_service
+
+  vehicle_simulation:
+    build: ./app/simulation_service
+    container_name: vehicle_simulation
+    depends_on:
+      - mqtt_broker
+    environment:
+      - MQTT_BROKER=mqtt_broker
+
   web_app:
-    build: ./app/web
+    build: ./app/web_app
     container_name: web_app
     depends_on:
       - catalog_service
     ports:
       - "8081:8081"
 
-  vehicle_simulation:
-    build: ./app/simulations
-    container_name: vehicle_simulation
-    depends_on:
-      - mongodb
-      - mqtt_broker
-    environment:
-      - MQTT_BROKER=mqtt_broker
-    ports:
-      - "1883:1883"
-
   telegram_bot:
     build: ./telegram_bot
     container_name: telegram_bot
     depends_on:
-      - mongodb
+      - catalog_service
 
   telegraf:
     build: ./config
@@ -74,8 +78,18 @@ services:
     volumes:
       - influxdb_data:/var/lib/influxdb
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+
 volumes:
   mongo_data:
   influxdb_data:
   mosquitto_data:
   mosquitto_log:
+  grafana_data:
