@@ -1,0 +1,6 @@
+cherrypy
+pymongo
+paho-mqtt
+jinja2
+requests
+python-telegram-bot
