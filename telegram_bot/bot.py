@@ -3,7 +3,7 @@ import requests
 from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
-TELEGRAM_API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
+TELEGRAM_API_TOKEN = os.getenv("7367855933:AAG-JeQc1YMNCnrHr1lj_jvEIChvETU44os")
 CATALOG_SERVICE_URL = os.getenv("CATALOG_SERVICE_URL", "http://catalog_service:8080")
 
 def start(update: Update, context: CallbackContext) -> None:
