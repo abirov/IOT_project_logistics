@@ -1,0 +1,68 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Logistics Dashboard",
+    "tags": [],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "5s",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Vehicle Status Over Time",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 9
+        },
+        "id": 1,
+        "datasource": "InfluxDB",
+        "targets": [
+          {
+            "refId": "A",
+            "measurement": "vehicle_status",
+            "groupBy": [
+              {
+                "type": "time",
+                "params": [
+                  "$__interval"
+                ]
+              },
+              {
+                "type": "fill",
+                "params": [
+                  "null"
+                ]
+              }
+            ],
+            "orderByTime": "ASC",
+            "policy": "default",
+            "resultFormat": "time_series",
+            "select": [
+              [
+                {
+                  "type": "field",
+                  "params": [
+                    "status"
+                  ]
+                },
+                {
+                  "type": "mean",
+                  "params": []
+                }
+              ]
+            ],
+            "tags": []
+          }
+        ],
+        "timeFrom": null,
+        "timeShift": null,
+        "title": "Vehicle Status",
+        "type": "graph"
+      }
+    ]
+  },
+  "overwrite": false
+}
