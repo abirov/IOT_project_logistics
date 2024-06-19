@@ -10,7 +10,8 @@ services:
       - mongo_data:/data/db
 
   catalog_service:
-    build: ./app/catalog_service
+    build:
+      context: ./app/catalog_service
     container_name: catalog_service
     depends_on:
       - mongodb
@@ -19,13 +20,15 @@ services:
       - "8080:8080"
 
   reputation_service:
-    build: ./app/reputation_service
+    build:
+      context: ./app/reputation_service
     container_name: reputation_service
     depends_on:
       - catalog_service
 
   vehicle_simulation:
-    build: ./app/simulation_service
+    build:
+      context: ./app/simulation_service
     container_name: vehicle_simulation
     depends_on:
       - mqtt_broker
@@ -33,7 +36,8 @@ services:
       - MQTT_BROKER=mqtt_broker
 
   web_app:
-    build: ./app/web_app
+    build:
+      context: ./app/web_app
     container_name: web_app
     depends_on:
       - catalog_service
@@ -41,13 +45,15 @@ services:
       - "8081:8081"
 
   telegram_bot:
-    build: ./telegram_bot
+    build:
+      context: ./telegram_bot
     container_name: telegram_bot
     depends_on:
       - catalog_service
 
   telegraf:
-    build: ./config
+    build:
+      context: ./config
     container_name: telegraf
     depends_on:
       - mongodb
@@ -93,4 +99,3 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   grafana_data:
- 
