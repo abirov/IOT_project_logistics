@@ -2,11 +2,11 @@ import cherrypy
 import json
 from bson import ObjectId
 from pymongo import MongoClient
-from app.catalog_service.models.logistics_point import LogisticsPoint
-from app.catalog_service.models.vehicle import Vehicle
-from app.catalog_service.models.driver import Driver
-from app.catalog_service.models.warehouse import Warehouse
-from app.catalog_service.models.feedback import Feedback
+from models.logistics_point import LogisticsPoint
+from models.vehicle import Vehicle
+from models.driver import Driver
+from models.warehouse import Warehouse
+from models.feedback import Feedback
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
