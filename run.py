@@ -6,7 +6,8 @@ def run_services():
         "app/reputation_service/reputation.py",
         "app/simulation_service/simulation.py",
         "app/web_app/web.py",
-        "telegram_bot/Bot.py",  
+        "telegram_bot/MQTT-Based/Bot.py",  # Updated path for Telegram bot
+        "telegram_bot/MQTT-Based/publisher.py"  # Path for MQTT publisher
     ]
     
     processes = []
@@ -20,24 +21,3 @@ def run_services():
 
 if __name__ == "__main__":
     run_services()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
