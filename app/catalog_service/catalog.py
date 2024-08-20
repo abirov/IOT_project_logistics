@@ -16,7 +16,7 @@ class JSONEncoder(json.JSONEncoder):
 
 class CatalogService:
     def __init__(self):
-        self.client = MongoClient('mongodb', 27017)
+        self.client = MongoClient('localhost', 27017)
         self.db = self.client['logistics_db']
         self.logistics_point_model = LogisticsPoint(self.db)
         self.vehicle_model = Vehicle(self.db)
@@ -87,7 +87,10 @@ class CatalogService:
             return self.warehouse_model.update(warehouse_id, data)
         elif cherrypy.request.method == 'DELETE':
             return self.warehouse_model.delete(warehouse_id)
-
+    #@cherrypy.expose  # This makes the method accessible via HTTP
+    #@cherrypy.tools.json_out()  # This tells CherryPy to return the output as JSON
+    #def index(self):
+       #  return {"message": "Welcome to the Catalog Service API"}
     @cherrypy.expose
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
@@ -111,5 +114,5 @@ class CatalogService:
                 return self.feedback_model.list_for_warehouse(warehouse_id)
 
 if __name__ == '__main__':
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8083})
     cherrypy.quickstart(CatalogService(), '/')
