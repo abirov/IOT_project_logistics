@@ -4,9 +4,9 @@ import requests
 import os
 
 class WebApp:
-    def __init__(self, catalog_url):
+    def init(self, catalog_url):
         # Use an absolute path to the templates directory
-        template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+        template_dir = os.path.join(os.path.dirname(file), 'templates')
         self.env = Environment(loader=FileSystemLoader(template_dir))
         self.catalog_url = catalog_url
 
@@ -74,18 +74,8 @@ class WebApp:
             cherrypy.log(f"Error fetching logistics points: {e}", traceback=True)
             return []
 
-if __name__ == '__main__':
+if name == 'main':
     catalog_url = 'http://localhost:8080'  # Change to localhost if running locally
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
     
-    # Configuration for serving static files
-    conf = {
-        '/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': os.path.join(os.path.dirname(__file__), 'static')
-        }
-    }
-
-    # Start the CherryPy server with the configuration for static files
-    cherrypy.quickstart(WebApp(catalog_url), '/', conf)
 
