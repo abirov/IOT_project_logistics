@@ -23,16 +23,34 @@ class WebApp:
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def submit_feedback(self, driver_id=None, warehouse_id=None, score=None, comments=None):
+    @cherrypy.tools.json_in()  # Added to parse incoming JSON
+    def submit_feedback(self):
         try:
+            # Log the incoming request data
+            input_data = cherrypy.request.json
+            driver_id = input_data.get('driver_id')
+            warehouse_id = input_data.get('warehouse_id')
+            score = input_data.get('score')
+            comments = input_data.get('comments')
+
+            cherrypy.log(f"Received feedback data: driver_id={driver_id}, warehouse_id={warehouse_id}, score={score}, comments={comments}")
+
+            if score is None:
+                raise ValueError("Score is required and must be a valid number.")
+
+            cherrypy.log("Converting score to float")
+            score = float(score)  # This will raise an error if 'score' is None or invalid
+
             feedback_data = {
                 'driver_id': driver_id,
                 'warehouse_id': warehouse_id,
-                'score': float(score),
+                'score': score,
                 'comments': comments
             }
+
+            cherrypy.log(f"Sending feedback data to catalog service: {feedback_data}")
             response = requests.post(f"{self.catalog_url}/feedback", json=feedback_data)
-            response.raise_for_status()
+            response.raise_for_status()  # This will raise an error for 4xx/5xx responses
             return response.json()
         except Exception as e:
             cherrypy.log(f"Error submitting feedback: {e}", traceback=True)
@@ -59,4 +77,15 @@ class WebApp:
 if __name__ == '__main__':
     catalog_url = 'http://localhost:8080'  # Change to localhost if running locally
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
-    cherrypy.quickstart(WebApp(catalog_url), '/')
+    
+    # Configuration for serving static files
+    conf = {
+        '/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': os.path.join(os.path.dirname(__file__), 'static')
+        }
+    }
+
+    # Start the CherryPy server with the configuration for static files
+    cherrypy.quickstart(WebApp(catalog_url), '/', conf)
+
