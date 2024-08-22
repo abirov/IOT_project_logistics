@@ -47,8 +47,9 @@ class VehicleStatusBot:
         self.application.run_polling()
 
 if __name__ == '__main__':
-    TELEGRAM_API_TOKEN = "6446649845:AAEXn1w0-yXciqo9Xpp-VIikWx5wo-MgNkM"  # Ensure this is the actual token from BotFather
-    MQTT_BROKER_URL = "localhost"
+    TELEGRAM_API_TOKEN = os.getenv("TELEGRAM_API_TOKEN_MQTT")
+    MQTT_BROKER_URL = os.getenv("MQTT_BROKER_URL_BOT")
     
     bot = VehicleStatusBot(TELEGRAM_API_TOKEN, MQTT_BROKER_URL)
     bot.run()
+    
