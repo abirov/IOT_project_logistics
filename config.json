@@ -1,5 +1,5 @@
 {
-  "telegram_bot_token": "" ,
+  "telegram_bot_token": "7367855933:AAG-JeQc1YMNCnrHr1lj_jvEIChvETU44os" ,
   "mongodb_uri": "mongodb://localhost:27017/logistics",
   "mqtt_broker": "mqtt_broker",
   "mqtt_port": 1883,
