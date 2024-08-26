@@ -28,8 +28,8 @@ class influxdbmanager:
         self.query_api = self.client.query_api()
         self.delete_api = self.client.delete_api()
 
-    def write_data(self, data, tags, fields, time):
-        point = Point(data)
+    def write_data(self,measurement, tags, fields, time):
+        point = Point(measurement)
         for tag_key, tag_value in tags.items():
             point = point.tag(tag_key, tag_value)
         for field_key, field_value in fields.items():
@@ -41,12 +41,34 @@ class influxdbmanager:
     def get_location(self, vehicle_id, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                  f'|> range(start: -{period}) '
-                 f'|> filter(fn: (r) => r._data == "location" '
+                 f'|> filter(fn: (r) => r._measurement == "vehicle" '
                  f'and r.vehicle_id == "{vehicle_id}") '
                  f'|> sort(columns: ["_time"], desc: true)')
         location = self.query_api.query_data_frame(query)
         return location
-
+    
+    def get_vehicle_by_location(self, latitude, longitude, period):
+        query = (f'from(bucket: "{self.influxdb_bucket}") '
+                 f'|> range(start: -{period}) '
+                 f'|> filter(fn: (r) => r._measurement == "vehicle" '
+                 f'and r.latitude == {latitude} '
+                 f'and r.longitude == {longitude}) '
+                 f'|> sort(columns: ["_time"], desc: true)')
+        vehicle = self.query_api.query_data_frame(query)
+        return vehicle
+    
+    def get_vehicles_by_location(self, min_latitude, max_latitude, min_longitude, max_longitude, period):
+        query = (f'from(bucket: "{self.influxdb_bucket}") '
+                f'|> range(start: -{period}) '
+                f'|> filter(fn: (r) => r._measurement == "vehicle" '
+                f'and r.latitude >= {min_latitude} '
+                f'and r.latitude <= {max_latitude} '
+                f'and r.longitude >= {min_longitude} '
+                f'and r.longitude <= {max_longitude}) '
+                f'|> sort(columns: ["_time"], desc: true)')
+        vehicle = self.query_api.query_data_frame(query)
+        return vehicle
+    
     def close(self):
         self.client.close()
         print("InfluxDB connection closed")
