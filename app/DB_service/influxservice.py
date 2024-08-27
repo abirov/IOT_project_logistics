@@ -1,16 +1,9 @@
 import cherrypy
 import cherrypy_cors
-import requests
 import pandas as pd
-import numpy as np
-import time
-from datetime import datetime
-from datetime import timedelta
-import geopandas as gpd
-from shapely.geometry import Point
 import json
-import os
 from DBconnectore3 import influxdbmanager
+import requests
 
 class influxconnectoreServer:
     exposed = True 
@@ -20,55 +13,50 @@ class influxconnectoreServer:
 
     def GET(self, *uri, **params):
         if uri[0] == 'location':
-            vehicle_id = params['vehicle_id']
-            period = params['period']
+            vehicle_id = params.get('vehicle_id')
+            period = params.get('period')
             location, vehicle_id = self.influxdb.get_location(vehicle_id, period)
-            return location.to_json(orient='records')
+            location_json = location.to_json(orient='records')
+            return location_json.encode('utf-8')
         elif uri[0] == 'vehicle':
-            latitude = params['latitude']
-            longitude = params['longitude']
-            period = params['period']
+            latitude = params.get('latitude')
+            longitude = params.get('longitude')
+            period = params.get('period')
             vehicle = self.influxdb.get_vehicle_by_location(latitude, longitude, period)
-            return vehicle.to_json(orient='records')
+            vehicle_json = vehicle.to_json(orient='records')
+            return vehicle_json.encode('utf-8')
         elif uri[0] == 'vehicles':
-            min_latitude = params['min_latitude']
-            max_latitude = params['max_latitude']
-            min_longitude = params['min_longitude']
-            max_longitude = params['max_longitude']
-            period = params['period']
+            min_latitude = params.get('min_latitude')
+            max_latitude = params.get('max_latitude')
+            min_longitude = params.get('min_longitude')
+            max_longitude = params.get('max_longitude')
+            period = params.get('period')
             vehicles = self.influxdb.get_vehicles_by_location(min_latitude, max_latitude, min_longitude, max_longitude, period)
-            return vehicles.to_json(orient='records')
+            vehicles_json = vehicles.to_json(orient='records')
+            return vehicles_json.encode('utf-8')
         else:
-            return "Invalid URI"
-    
-
-
-
-
-
-
+            error_message = json.dumps({"error": "Invalid URI"})
+            return error_message.encode('utf-8')
 
 if __name__ == '__main__':
-
-
-
-    dbConnector = influxconnectoreServer()
-    serverConf = {
-        "url": "localhost",
-        "port": 8080
-    }
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
-            'tools.response_headers.on': True,
             'tools.sessions.on': True,
+            # 'tools.response_headers.on': True,
+            # 'tools.response_headers.headers': [('Content-Type', 'application/json')]
         }
     }
-    cherrypy.config.update(conf)
-    cherrypy.tree.mount(dbConnector, '/influxdb', conf)
-    cherrypy_cors.install()
-    cherrypy.config.update({'server.socket_host': '0.0.0.0','web.socket_ip': serverConf["url"], 'server.socket_port': serverConf["port"]})
-    cherrypy.engine.start()
-    # cherrypy.engine.block() #this line blocks the main thread and the code below will not be executed :)
 
+    # config = { "baseUrl": "http://localhost", "basePort": 8080 }
+    # response = requests.get(f'{config["baseUrl"]}{config["basePort"]}/public/fullservices')
+    # services = response.json()
+    # for service in services:
+    #     if service['name'] == 'influxdb':
+    #         config = service
+    
+    cherrypy_cors.install()
+    cherrypy.tree.mount(influxconnectoreServer(), '/influxdb', conf)
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
+    cherrypy.engine.start()
 
