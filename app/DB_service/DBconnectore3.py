@@ -45,7 +45,7 @@ class influxdbmanager:
                  f'and r.vehicle_id == "{vehicle_id}") '
                  f'|> sort(columns: ["_time"], desc: true)')
         location = self.query_api.query_data_frame(query)
-        return location
+        return location , vehicle_id
     
     def get_vehicle_by_location(self, latitude, longitude, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
@@ -68,6 +68,14 @@ class influxdbmanager:
                 f'|> sort(columns: ["_time"], desc: true)')
         vehicle = self.query_api.query_data_frame(query)
         return vehicle
+    
+    def show_all_vehicles_on_map(self, period):
+        query = (f'from(bucket: "{self.influxdb_bucket}") '
+                f'|> range(start: -{period}) '
+                f'|> filter(fn: (r) => r._measurement == "vehicle") '
+                f'|> sort(columns: ["_time"], desc: true)')
+        vehicles = self.query_api.query_data_frame(query)
+        return vehicles
     
     def close(self):
         self.client.close()
