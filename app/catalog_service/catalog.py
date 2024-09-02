@@ -2,7 +2,6 @@ import cherrypy
 import json
 from bson import ObjectId
 from pymongo import MongoClient
-from app.catalog_service.models.warehouse import Warehouse
 from models.logistics_point import LogisticsPoint
 from models.vehicle import Vehicle
 from models.driver import Driver
