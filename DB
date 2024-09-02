@@ -1,0 +1,21 @@
+import pymongo
+
+# MongoDB setup
+client = pymongo.MongoClient("mongodb://localhost:27017/")
+db = client["logistics_db"]
+collection = db["Package"]
+
+# Function to insert a new package
+def insert_package(driver_id, source, destination, status):
+    package_data = {
+        "driver_id": driver_id,
+        "source": source,
+        "destination": destination,
+        "status": status
+    }
+    collection.insert_one(package_data)
+    print(f"Inserted: {package_data}")
+
+# Example usage
+if __name__ == '__main__':
+    insert_package("1996", "Warehouse c", "Store D", "In Transit")
