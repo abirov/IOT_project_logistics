@@ -104,3 +104,4 @@ if __name__ == '__main__':
     
     bot = VehicleStatusBot(TELEGRAM_API_TOKEN, MQTT_BROKER_URL)
     bot.run()
+
