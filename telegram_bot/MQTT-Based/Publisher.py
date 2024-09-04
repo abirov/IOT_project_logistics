@@ -15,13 +15,21 @@ def fetch_and_publish():
     packages = collection.find({})
     package_data = [
         {
-            "driver_id": package["driver_id"],
-            "source": package["source"],
-            "destination": package["destination"],
-            "status": package["status"]
+            "package_id": str(package["_id"]),  
+            "driver_id": package.get("driver_id"), 
+            "source": package.get("source"),       
+            "destination": package.get("destination"),  
+            "status": package.get("status")         
         } for package in packages
     ]
-    message = json.dumps(package_data)
+    
+    # Remove keys with None values
+    cleaned_package_data = [
+        {k: v for k, v in data.items() if v is not None}
+        for data in package_data
+    ]
+    
+    message = json.dumps(cleaned_package_data)
     publish.single(MQTT_TOPIC, payload=message, hostname=MQTT_BROKER_URL)
     print(f"Published: {message} to topic: {MQTT_TOPIC}")
 
