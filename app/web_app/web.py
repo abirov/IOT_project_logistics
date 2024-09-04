@@ -74,7 +74,7 @@ class WebApp:
             cherrypy.log(f"Error fetching logistics points: {e}", traceback=True)
             return []
 
-if name == 'main':
+if __name__ == 'main':
     catalog_url = 'http://localhost:8080'  # Change to localhost if running locally
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
     

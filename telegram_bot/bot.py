@@ -1,14 +1,11 @@
-import os
-import json
 import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters, CallbackQueryHandler
 
 class VehicleStatusBot:
     def __init__(self, token, api_url):
         self.token = token
-        self.api_url = api_url  # Base URL for the REST API
+        self.api_url = api_url  # Base URL for your catalog REST API
         self.application = Application.builder().token(token).build()
         self.setup_handlers()
 
@@ -49,27 +46,29 @@ class VehicleStatusBot:
         elif filter_mode == 'package_id':
             await self.filter_by_package_id(update, context)
 
+    # Fetching data using REST API for driver_id
     async def filter_by_driver_id(self, update: Update, context: CallbackContext) -> None:
         driver_id = update.message.text.strip()
-        url = f"{self.api_url}/packages?driver_id={driver_id}"
+        url = f"{self.api_url}/drivers?driver_id={driver_id}"
         
         try:
             response = requests.get(url)
             response.raise_for_status()
-            packages_data = response.json()
+            drivers_data = response.json()
 
-            if packages_data:
-                status_message = "\n".join([f"Driver {p['driver_id']} - From {p['source']} to {p['destination']}: {p['status']}" for p in packages_data])
+            if drivers_data:
+                status_message = "\n".join([f"Driver {d['driver_id']} - From {d['source']} to {d['destination']}: {d['status']}" for d in drivers_data])
             else:
                 status_message = f"No data available for driver ID: {driver_id}"
         except requests.RequestException as e:
             status_message = f"Error fetching data: {e}"
 
-        await update.message.reply_text(status_message, parse_mode=ParseMode.HTML)
+        await update.message.reply_text(status_message)
 
+    # Fetching data using REST API for package_id
     async def filter_by_package_id(self, update: Update, context: CallbackContext) -> None:
         package_id = update.message.text.strip()
-        url = f"{self.api_url}/packages/{package_id}"
+        url = f"{self.api_url}/logistics_points/{package_id}"
         
         try:
             response = requests.get(url)
@@ -87,14 +86,14 @@ class VehicleStatusBot:
         except requests.RequestException as e:
             status_message = f"Error fetching data: {e}"
 
-        await update.message.reply_text(status_message, parse_mode=ParseMode.HTML)
+        await update.message.reply_text(status_message)
 
     def run(self):
         self.application.run_polling()
 
 if __name__ == '__main__':
     TELEGRAM_API_TOKEN = "6998616059:AAFEB07QcjFw-twXCqdgm_NYNZBMXZRx9h4"
-    API_BASE_URL = "http://your-rest-api-url"  # The base URL of your REST API
+    API_BASE_URL = "http://localhost:8080"  # Base URL for the catalog service
 
     bot = VehicleStatusBot(TELEGRAM_API_TOKEN, API_BASE_URL)
     bot.run()

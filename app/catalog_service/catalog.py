@@ -1,3 +1,4 @@
+
 import cherrypy
 import json
 from bson import ObjectId
@@ -15,7 +16,7 @@ class JSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 class CatalogService:
-    def __init__(self):
+    def init(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['logistics_db']
         self.logistics_point_model = LogisticsPoint(self.db)
@@ -26,52 +27,68 @@ class CatalogService:
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def logistics_points(self, point_id=None):
+    @cherrypy.tools.json_in()
+    def drivers(self, driver_id=None,):
         if cherrypy.request.method == 'GET':
-            if point_id:
-                return self.logistics_point_model.get(point_id)
-            return self.logistics_point_model.list()
+            # Handling login when username and password are provided
+            username = cherrypy.request.params.get('username')
+            password = cherrypy.request.params.get('password')
+            cherrypy.log(f"username: {username}, password: {password}")
+            if username and password:
+                try:
+                    # Query the database for the username and password
+                    driver = self.driver_model.find_by_username_password(username, password)
+                    
+                    if driver:
+                        return {'status': 'success', 'driver_id': driver['driver_id']}
+                    else:
+                        return {'status': 'error', 'message': 'Invalid username or password'}
+                except Exception as e:
+                    cherrypy.log(f"Error during driver login: {e}", traceback=True)
+                    return {'status': 'error', 'message': str(e)}
+            else:
+                return {'status': 'error', 'message': 'Username and password are required'}
+        
         elif cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            return self.logistics_point_model.create(data)
-        elif cherrypy.request.method == 'PUT':
-            data = cherrypy.request.json
-            return self.logistics_point_model.update(point_id, data)
-        elif cherrypy.request.method == 'DELETE':
-            return self.logistics_point_model.delete(point_id)
+            
+            ###### Handling driver creation (sign-up)
+            if 'driver_id' in data and 'username' in data and 'password' in data:
+                try:
+                    # Extract the necessary fields
+                    driver_id = data.get('driver_id')
+                    username = data.get('username')
+                    password = data.get('password')
 
-    @cherrypy.expose
-    @cherrypy.tools.json_out()
-    def vehicles(self, vehicle_id=None):
-        if cherrypy.request.method == 'GET':
-            if vehicle_id:
-                return self.vehicle_model.get(vehicle_id)
-            return self.vehicle_model.list()
-        elif cherrypy.request.method == 'POST':
-            data = cherrypy.request.json
-            return self.vehicle_model.create(data)
-        elif cherrypy.request.method == 'PUT':
-            data = cherrypy.request.json
-            return self.vehicle_model.update(vehicle_id, data)
-        elif cherrypy.request.method == 'DELETE':
-            return self.vehicle_model.delete(vehicle_id)
+                    # Simple validation
+                    if not driver_id or not username or not password:
+                        raise ValueError("Driver ID, Username, and Password are required.")
 
-    @cherrypy.expose
-    @cherrypy.tools.json_out()
-    def drivers(self, driver_id=None):
-        if cherrypy.request.method == 'GET':
-            if driver_id:
-                return self.driver_model.get(driver_id)
-            return self.driver_model.list()
-        elif cherrypy.request.method == 'POST':
-            data = cherrypy.request.json
-            return self.driver_model.create(data)
+                    # Prepare the data to be inserted
+                    driver_data = {
+                        'driver_id': driver_id,
+                        'username': username,
+                        'password': password,
+                        'reputation': 0  # Initial reputation score
+                    }
+
+                    # Insert the driver data into the database
+                    self.driver_model.create(driver_data)
+                    
+                    return {'status': 'success', 'message': 'Driver registered successfully'}
+                except Exception as e:
+                    cherrypy.log(f"Error during driver signup: {e}", traceback=True)
+                    return {'status': 'error', 'message': str(e)}
+
+            # If no valid operation is detected, return an error
+            return {'status': 'error', 'message': 'Invalid operation'}
+
         elif cherrypy.request.method == 'PUT':
             data = cherrypy.request.json
             return self.driver_model.update(driver_id, data)
+        
         elif cherrypy.request.method == 'DELETE':
             return self.driver_model.delete(driver_id)
-
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def warehouses(self, warehouse_id=None):
@@ -87,10 +104,7 @@ class CatalogService:
             return self.warehouse_model.update(warehouse_id, data)
         elif cherrypy.request.method == 'DELETE':
             return self.warehouse_model.delete(warehouse_id)
-    #@cherrypy.expose  # This makes the method accessible via HTTP
-    #@cherrypy.tools.json_out()  # This tells CherryPy to return the output as JSON
-    #def index(self):
-       #  return {"message": "Welcome to the Catalog Service API"}
+    
     @cherrypy.expose
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
@@ -112,7 +126,6 @@ class CatalogService:
                 return self.feedback_model.list_for_driver(driver_id)
             if warehouse_id:
                 return self.feedback_model.list_for_warehouse(warehouse_id)
-
-if __name__ == '__main__':
+if __name__ == 'main':
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
     cherrypy.quickstart(CatalogService(), '/')
