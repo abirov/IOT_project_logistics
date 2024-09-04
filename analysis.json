@@ -1,0 +1,45 @@
+MongoDB:
+
+Stores data in a centralized repository.
+Accessible via port 27017.
+Persistent storage is provided using a Docker volume (mongo_data).
+Catalog Service:
+
+Acts as the centralized store for logistics entities.
+Depends on mongodb and mqtt_broker.
+Exposed via port 8080.
+Reputation Service:
+
+Likely evaluates driver and warehouse performance.
+Depends on catalog_service.
+Vehicle Simulation:
+
+Simulates vehicles and sends updates via MQTT.
+Depends on mqtt_broker and uses the MQTT_BROKER environment variable.
+Web App:
+
+Provides a user interface to track vehicles and manage logistics.
+Depends on catalog_service.
+Exposed via port 8081.
+Telegram Bot:
+
+Sends real-time notifications about delivery status.
+Depends on catalog_service.
+Telegraf:
+
+Collects and sends metrics to InfluxDB.
+Depends on mongodb and influxdb.
+Configured with environment variables to access system metrics.
+MQTT Broker:
+
+Facilitates asynchronous communication.
+Uses the Eclipse Mosquitto image.
+Exposed via port 1883.
+InfluxDB:
+
+Stores time-series data.
+Exposed via port 8086.
+Grafana:
+
+Visualizes data collected by Telegraf and stored in InfluxDB.
+Exposed via port 3000.
