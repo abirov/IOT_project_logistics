@@ -57,7 +57,11 @@ class influxdbmanager:
         result = []
         for table in tables:
             for record in table.records:
-                result.append({"time": record['_time'].isoformat(), "latitude": record['latitude'], "longitude": record['longitude']})
+                result.append({
+                    "time": record['_time'].isoformat(),
+                    "latitude": float(record['latitude']),
+                    "longitude": float(record['longitude'])
+                })
 
         location_df = pd.DataFrame(result)
         return location_df, vehicle_id
@@ -112,17 +116,18 @@ class influxdbmanager:
 
 if __name__ == '__main__':
         influxdb = influxdbmanager('configinfluxdb.json')
-        # influxdb.write_data('vehicle', {'vehicle_id': 'vehicle11'}, {'latitude': 140.7749, 'longitude': -100.4194}, '2024-09-02T15:54:00Z')
-        # print("Data written")
-        location, vehicle_id = influxdb.get_location('vehicle11', '720')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
+        location, vehicle_id = influxdb.get_location('vehicle9', '720')
         print(location)
-        # columns = location.columns
-        # print("Columns:", columns)
-        # print(location)
-        # vehicle = influxdb.get_vehicle_by_location('138.7749', '-28.4194', '2')
-        # print(vehicle)
-        # vehicles = influxdb.get_vehicles_by_location(137.7749, 147.7750, -29.4194, -30.4193, '100h')
-        # print(vehicles)
-        # vehicles = influxdb.show_all_vehicles_on_map('100')
-        # print(vehicles)
-        influxdb.close()
+#         location, vehicle_id = influxdb.get_location('vehicle11', '720')
+#         print(location)
+#         # columns = location.columns
+#         # print("Columns:", columns)
+#         # print(location)
+#         # vehicle = influxdb.get_vehicle_by_location(138.7749, -28.4194, '2')
+#         # print(vehicle)
+#         # vehicles = influxdb.get_vehicles_by_location(137.7749, 147.7750, -29.4194, -30.4193, '100h')
+#         # print(vehicles)
+#         # vehicles = influxdb.show_all_vehicles_on_map('100')
+#         # print(vehicles)
+#         influxdb.close()
