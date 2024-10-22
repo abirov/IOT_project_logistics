@@ -1,13 +1,17 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
+import json
+import os
+from util import load_config  # Import the utility function
 
 
 class Vehicle:
-    def __init__(self):
-        self.client = MongoClient('localhost', 27017)
-        self.db = self.client['IOT']
-        self.collection = self.db['vehicle']
+    def __init__(self, config_file):
+        config = load_config('vehicle', config_file)  # Use the utility function to load the config
+        self.client = MongoClient(config['host'], config['port'])
+        self.db = self.client[config['db']]
+        self.collection = self.db[config['collection']]
 
     def create(self, data):
         try:

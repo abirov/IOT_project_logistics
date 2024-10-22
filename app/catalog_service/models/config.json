@@ -1,0 +1,57 @@
+{
+    "vehicle": {
+        "db" : "IOT",
+        "collection" : "vehicle",
+        "host": "localhost",
+        "port": 27017
+    },
+    "driver": {
+        "db" : "IOT",
+        "collection" : "driver",
+        "host": "localhost",
+        "port": 27017
+    },
+    "logisticpoint": {
+        "db" : "IOT",
+        "collection" : "logisticpoint",
+        "host": "localhost",
+        "port": 27017
+    },
+    "feedback": {
+        "db" : "IOT",
+        "collection" : "feedback",
+        "host": "localhost",
+        "port": 27017
+    },
+    "warehouse": {
+        "db" : "IOT",
+        "collection" : "warehouse",
+        "host": "localhost",
+        "port": 27017
+    },
+    "package": {
+        "db" : "IOT",
+        "collection" : "package",
+        "host": "localhost",
+        "port": 27017
+    }
+}
+    
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}

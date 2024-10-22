@@ -1,13 +1,14 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-
+from util import load_config  # Import the utility function
 
 class Feedback:
-    def __init__(self):
-        self.client = MongoClient('localhost', 27017)
-        self.db = self.client['IOT']
-        self.collection = self.db['feedback']
+    def __init__(self, config_file):
+        config = load_config('feedback', config_file)  # Use the utility function to load the config
+        self.client = MongoClient(config['host'], config['port'])
+        self.db = self.client[config['db']]
+        self.collection = self.db[config['collection']]
 
     def create(self, data):
         try:
