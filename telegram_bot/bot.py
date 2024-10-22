@@ -1,30 +1,100 @@
 import os
+import json
 import requests
-from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters, CallbackQueryHandler
 
-TELEGRAM_API_TOKEN = os.getenv("7367855933:AAG-JeQc1YMNCnrHr1lj_jvEIChvETU44os")
-CATALOG_SERVICE_URL = os.getenv("CATALOG_SERVICE_URL", "http://catalog_service:8080")
+class VehicleStatusBot:
+    def __init__(self, token, api_url):
+        self.token = token
+        self.api_url = api_url  # Base URL for the REST API
+        self.application = Application.builder().token(token).build()
+        self.setup_handlers()
 
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hello! Use /status to get the status of vehicles.')
+    def setup_handlers(self):
+        self.application.add_handler(CommandHandler("start", self.start))
+        self.application.add_handler(CommandHandler("status", self.ask_for_filter_choice))
+        self.application.add_handler(CallbackQueryHandler(self.handle_filter_choice))
+        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_filter_input))
 
-def status(update: Update, context: CallbackContext) -> None:
-    response = requests.get(f"{CATALOG_SERVICE_URL}/vehicles")
-    vehicles = response.json()
-    status_message = "\n".join([f"{v['name']}: {v['status']}" for v in vehicles])
-    update.message.reply_text(status_message)
+    async def start(self, update: Update, context: CallbackContext) -> None:
+        await update.message.reply_text('Hello! Use /status to filter by driver ID or package ID.')
 
-def main() -> None:
-    updater = Updater(TELEGRAM_API_TOKEN)
-    dispatcher = updater.dispatcher
+    async def ask_for_filter_choice(self, update: Update, context: CallbackContext) -> None:
+        keyboard = [
+            [InlineKeyboardButton("Driver ID", callback_data='driver_id')],
+            [InlineKeyboardButton("Package ID", callback_data='package_id')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text('Would you like to filter by driver ID or package ID?', reply_markup=reply_markup)
 
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("status", status))
+    async def handle_filter_choice(self, update: Update, context: CallbackContext) -> None:
+        query = update.callback_query
+        await query.answer()
 
-    updater.start_polling()
-    updater.idle()
+        filter_mode = query.data
+        context.user_data['filter_mode'] = filter_mode
+
+        if filter_mode == 'driver_id':
+            await query.edit_message_text('Please enter the driver ID to filter the data.')
+        elif filter_mode == 'package_id':
+            await query.edit_message_text('Please enter the package ID to filter the data.')
+
+    async def handle_filter_input(self, update: Update, context: CallbackContext) -> None:
+        filter_mode = context.user_data.get('filter_mode')
+
+        if filter_mode == 'driver_id':
+            await self.filter_by_driver_id(update, context)
+        elif filter_mode == 'package_id':
+            await self.filter_by_package_id(update, context)
+
+    async def filter_by_driver_id(self, update: Update, context: CallbackContext) -> None:
+        driver_id = update.message.text.strip()
+        url = f"{self.api_url}/packages?driver_id={driver_id}"
+        
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            packages_data = response.json()
+
+            if packages_data:
+                status_message = "\n".join([f"Driver {p['driver_id']} - From {p['source']} to {p['destination']}: {p['status']}" for p in packages_data])
+            else:
+                status_message = f"No data available for driver ID: {driver_id}"
+        except requests.RequestException as e:
+            status_message = f"Error fetching data: {e}"
+
+        await update.message.reply_text(status_message, parse_mode=ParseMode.HTML)
+
+    async def filter_by_package_id(self, update: Update, context: CallbackContext) -> None:
+        package_id = update.message.text.strip()
+        url = f"{self.api_url}/packages/{package_id}"
+        
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            package_data = response.json()
+
+            if package_data:
+                status_message = (
+                    f"Package ID: {package_data['package_id']}\n"
+                    f"Driver ID: {package_data['driver_id']}\n"
+                    f"From {package_data['source']} to {package_data['destination']}: {package_data['status']}"
+                )
+            else:
+                status_message = f"No data available for package ID: {package_id}"
+        except requests.RequestException as e:
+            status_message = f"Error fetching data: {e}"
+
+        await update.message.reply_text(status_message, parse_mode=ParseMode.HTML)
+
+    def run(self):
+        self.application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    TELEGRAM_API_TOKEN = "6998616059:AAFEB07QcjFw-twXCqdgm_NYNZBMXZRx9h4"
+    API_BASE_URL = "http://your-rest-api-url"  # The base URL of your REST API
 
+    bot = VehicleStatusBot(TELEGRAM_API_TOKEN, API_BASE_URL)
+    bot.run()

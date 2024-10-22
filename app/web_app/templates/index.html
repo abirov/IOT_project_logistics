@@ -10,19 +10,27 @@
     </header>
     <section>
         <h2>Vehicles</h2>
-        <ul id="vehicles">
-            {% for vehicle in vehicles %}
-                <li>{{ vehicle.name }} - Status: {{ vehicle.status }}</li>
-            {% endfor %}
-        </ul>
+        {% if vehicles %}
+            <ul id="vehicles">
+                {% for vehicle in vehicles %}
+                    <li>{{ vehicle.name }} - Status: {{ vehicle.status }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No vehicles available.</p>
+        {% endif %}
     </section>
     <section>
         <h2>Logistics Points</h2>
-        <ul id="logisticsPoints">
-            {% for point in logistics_points %}
-                <li>{{ point.name }} - Address: {{ point.address }}</li>
-            {% endfor %}
-        </ul>
+        {% if logistics_points %}
+            <ul id="logisticsPoints">
+                {% for point in logistics_points %}
+                    <li>{{ point.name }} - Address: {{ point.address }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No logistics points available.</p>
+        {% endif %}
     </section>
     <section>
         <h2>Submit Feedback</h2>
@@ -47,16 +55,20 @@
             const warehouse_id = form.warehouse_id.value;
             const score = form.score.value;
             const comments = form.comments.value;
-            
-            const response = await fetch('/submit_feedback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ driver_id, warehouse_id, score, comments })
-            });
-            const result = await response.json();
-            document.getElementById('feedbackResponse').innerText = JSON.stringify(result);
+
+            try {
+                const response = await fetch('/submit_feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ driver_id, warehouse_id, score, comments })
+                });
+                const result = await response.json();
+                document.getElementById('feedbackResponse').innerText = JSON.stringify(result);
+            } catch (error) {
+                document.getElementById('feedbackResponse').innerText = 'Error submitting feedback. Please try again.';
+            }
         }
     </script>
 </body>

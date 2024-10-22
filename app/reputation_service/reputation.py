@@ -1,4 +1,5 @@
 import requests
+import os
 
 class ReputationService:
     def __init__(self, catalog_url):
@@ -39,7 +40,7 @@ class ReputationService:
         requests.put(url, json=data)
 
 if __name__ == '__main__':
-    catalog_url = 'http://catalog_service:8080'
+    catalog_url = os.getenv('CATALOG_URL')
     reputation_service = ReputationService(catalog_url)
-    # Logic to periodically update reputations or trigger updates based on events
+   
 
