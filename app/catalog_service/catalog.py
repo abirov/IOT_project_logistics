@@ -12,7 +12,8 @@ class CatalogService:
         self.warehouse_repo = Warehouse()
         self.feedback_repo = Feedback()
         self.vehicle_repo = Vehicle()
-        # self.logpoint_repo = LogisticsPoint()
+        #self.logpoint_repo = LogisticsPoint()
+        #self.logpoint_repo = LogisticsPoint()
 
     ##  DRIVER FUNCTIONALITY
     def get_driver_by_id(self, driver_id='str'):

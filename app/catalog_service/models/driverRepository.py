@@ -78,3 +78,23 @@ class Driver:
         elif data and '_id' in data:
             data['_id'] = str(data['_id'])
         return data
+
+
+
+
+    def get_by_package_id(self, package_id):
+        return self.db.driver.aggregate([
+            {
+                '$lookup': {
+                    'from': 'package',
+                    'localField': '_id',
+                    'foreignField': 'driver_id',
+                    'as': 'packages'
+                }
+            },
+            {
+                '$match': {
+                    'packages.package_id': package_id  # Match inside the joined 'packages' array
+                }
+            }
+        ])
