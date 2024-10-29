@@ -1,5 +1,6 @@
 # from models.LogisticsPointRepository import LogisticsPoint
 import cherrypy
+import cherrypy_cors
 from models.vehicleRepository import Vehicle
 from models.driverRepository import Driver
 from models.warehouseRepository import Warehouse
@@ -191,3 +192,15 @@ class CatalogService:
                 return {"error": "Please provide either point_id or point_name as a parameter"}
             
 
+if __name__ == '__main__':
+    cherrypy_cors.install()
+    conf = {
+        '/': {
+            'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
+            'tools.sessions.on': False,
+            'tools.response_headers.on': True,
+            'cors.expose.on': True,
+        }
+    }
+    cherrypy.tree.mount(CatalogService(), '/catalog', conf)
+    cherrypy.engine.start()
