@@ -1,22 +1,23 @@
 # from models.LogisticsPointRepository import LogisticsPoint
 import cherrypy
-import cherrypy_cors
 from models.vehicleRepository import Vehicle
 from models.driverRepository import Driver
 from models.warehouseRepository import Warehouse
 from models.feedbackRepository import Feedback
 from models.LogisticsPointRepository import LogisticsPoint
 from models.packageRepository import Package
+import json
 
 
 class CatalogService:
-    def __init__(self):
-        self.driver_repo = Driver()
-        self.warehouse_repo = Warehouse()
-        self.feedback_repo = Feedback()
-        self.vehicle_repo = Vehicle()
-        self.logpoint_repo = LogisticsPoint()
-        self.package_repo = Package()
+
+    def __init__(self, config_file='config.json'):
+        self.driver_repo = Driver(config_file=config_file)
+        self.warehouse_repo = Warehouse(config_file=config_file)
+        self.feedback_repo = Feedback(config_file=config_file)
+        self.vehicle_repo = Vehicle(config_file=config_file)
+        self.logpoint_repo = LogisticsPoint(config_file=config_file)
+        self.package_repo = Package(config_file=config_file)
 
     ##  DRIVER FUNCTIONALITY
     def get_driver_by_id(self, driver_id='str'):
@@ -109,13 +110,31 @@ class CatalogService:
     #package functionality
     def create_package(self, data, driver_id, warehouse_id):
         return self.package_repo.create(data, driver_id, warehouse_id)
-
-
-    expose=True
-    @cherrypy.tools.json_out()
+    
     @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def get_package_by_id(self, package_id):
+        return self.package_repo.get_by_id(package_id)
+    def get_package_by_driver(self, driver_id):
+        return self.package_repo.get_by_driver(driver_id)
+    def get_package_by_warehouse(self, warehouse_id):
+        return self.package_repo.get_by_warehouse(warehouse_id)
+    def update_package(self, package_id, data):
+        return self.package_repo.update(package_id, data)
+    def delete_package(self, package_id):
+        return self.package_repo.delete(package_id)
+    def list_all_packages(self):
+        return self.package_repo.list_all()
+    
+
+
+    exposed=True
+    @cherrypy.tools.json_out(handler = json.dumps, encoder=json.JSONEncoder)
     def GET(self, *uri, **params):
-        if uri and uri[0] == 'driver':
+
+        # if uri and uri[0] == 'driver':
+        if len(uri)>0 and uri[0] == 'driver':
+
             # If no specific parameter is provided, list all drivers
             if not params:
                 return self.list_all_drivers()
@@ -133,7 +152,7 @@ class CatalogService:
                 return {"error": "Please provide either driver_id or driver_name as a parameter"}
             
 
-        elif uri and uri[0] == 'warehouse':
+        elif len(uri)>0 and uri[0] == 'warehouse':
             # If no specific parameter is provided, list all warehouses
             if not params:
                 return self.list_all_warehouses()
@@ -147,7 +166,8 @@ class CatalogService:
                 # If neither warehouse_id is provided, return an error
                 return {"error": "Please provide warehouse_id as a parameter"}
             
-        elif uri and uri[0] == 'feedback':
+        elif len(uri)>0 and uri[0] == 'feedback':
+
             # If no specific parameter is provided, list all feedbacks
             if not params:
                 return self.feedback_repo.list_all()
@@ -160,7 +180,8 @@ class CatalogService:
             else:
                 # If neither feedback_id is provided, return an error
                 return {"error": "Please provide feedback_id as a parameter"}
-        elif uri and uri[0] == 'vehicle':
+        elif len(uri)>0 and uri[0] == 'vehicle':
+
             # If no specific parameter is provided, list all vehicles
             if not params:
                 return self.list_all_vehicles()
@@ -174,7 +195,8 @@ class CatalogService:
                 # If neither vehicle_id is provided, return an error
                 return {"error": "Please provide vehicle_id as a parameter"}
             
-        elif uri and uri[0] == 'logpoint':
+        elif len(uri)>0 and uri[0] == 'logpoint':
+
             # If no specific parameter is provided, list all logistics points
             if not params:
                 return self.list_all_logpoints()
@@ -190,17 +212,44 @@ class CatalogService:
             else:
                 # If neither point_id nor point_name is provided, return an error
                 return {"error": "Please provide either point_id or point_name as a parameter"}
+        elif len(uri)>0 and uri[0] == 'package':
+
+            # If no specific parameter is provided, list all packages
+            if not params:
+                return self.package_repo.list_all()
             
+            # Check for the presence of specific query parameters
+            package_id = params.get('package_id')
+            driver_id = params.get('driver_id')
+            warehouse_id = params.get('warehouse_id')
+            if package_id:
+                return self.package_repo.get_by_id(package_id)
+            elif driver_id:
+                return self.package_repo.get_by_driver(driver_id)
+            elif warehouse_id:
+                return self.package_repo.get_by_warehouse(warehouse_id)
+            else:
+                # If neither package_id nor driver_id nor warehouse_id is provided, return an error
+                return {"error": "Please provide either package_id or driver_id or warehouse_id as a parameter"}
+    # expose=True
+    # @cherrypy.tools.json_out()
+    # @cherrypy.tools.json_in()
+    # def POST(self, *uri, **params):
+        
+
+
+
 
 if __name__ == '__main__':
-    cherrypy_cors.install()
+    # cherrypy_cors.install()
+    
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
-            'tools.sessions.on': False,
-            'tools.response_headers.on': True,
-            'cors.expose.on': True,
+            'tools.sessions.on': True,
         }
     }
-    cherrypy.tree.mount(CatalogService(), '/catalog', conf)
+    cherrypy.tree.mount(CatalogService(), '/' ,conf)
+    cherrypy.config.update({'server.socket_port': 8080})
     cherrypy.engine.start()
+    cherrypy.engine.block()

@@ -1,7 +1,7 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-from util import load_config  # Import the utility function
+from .util import load_config  # Import the utility function
 
 class Driver:
     def __init__(self, config_file):

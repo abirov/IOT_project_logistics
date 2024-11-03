@@ -1,9 +1,7 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-import json
-import os
-from util import load_config  # Import the utility function
+from .util import load_config  # Import the utility function
 
 
 class Vehicle:

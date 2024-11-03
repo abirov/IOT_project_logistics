@@ -2,7 +2,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
 import json
-from util import load_config  # Import the utility function
+from .util import load_config  # Import the utility function
 
 
 class Warehouse:
