@@ -83,17 +83,7 @@ class Package:
     def json_encoder(data):
         if isinstance(data, list):
             for doc in data:
-                if '_id' in doc:
-                    doc['_id'] = str(doc['_id'])
-                if 'driver_id' in doc:
-                    doc['driver_id'] = str(doc['driver_id'])
-                if 'warehouse_id' in doc:
-                    doc['warehouse_id'] = str(doc['warehouse_id'])
-        elif data:
-            if '_id' in data:
-                data['_id'] = str(data['_id'])
-            if 'driver_id' in data:
-                data['driver_id'] = str(data['driver_id'])
-            if 'warehouse_id' in data:
-                data['warehouse_id'] = str(data['warehouse_id'])
+                doc['_id'] = str(doc['_id'])
+        elif data and '_id' in data:
+            data['_id'] = str(data['_id'])
         return data

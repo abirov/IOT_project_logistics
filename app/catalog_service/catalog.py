@@ -7,6 +7,14 @@ from models.feedbackRepository import Feedback
 from models.LogisticsPointRepository import LogisticsPoint
 from models.packageRepository import Package
 import json
+from bson import ObjectId
+
+#custom json encoder to handle ObjectId
+class CustomJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super().default(obj)
 
 
 class CatalogService:
@@ -111,25 +119,29 @@ class CatalogService:
     def create_package(self, data, driver_id, warehouse_id):
         return self.package_repo.create(data, driver_id, warehouse_id)
     
-    @cherrypy.tools.json_in()
-    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_out(cls=CustomJsonEncoder)
     def get_package_by_id(self, package_id):
         return self.package_repo.get_by_id(package_id)
+    
     def get_package_by_driver(self, driver_id):
         return self.package_repo.get_by_driver(driver_id)
+    
     def get_package_by_warehouse(self, warehouse_id):
         return self.package_repo.get_by_warehouse(warehouse_id)
+    
     def update_package(self, package_id, data):
         return self.package_repo.update(package_id, data)
+    
     def delete_package(self, package_id):
         return self.package_repo.delete(package_id)
+    
     def list_all_packages(self):
         return self.package_repo.list_all()
     
 
 
     exposed=True
-    @cherrypy.tools.json_out(handler = json.dumps, encoder=json.JSONEncoder)
+    @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
 
         # if uri and uri[0] == 'driver':
@@ -216,21 +228,28 @@ class CatalogService:
 
             # If no specific parameter is provided, list all packages
             if not params:
-                return self.package_repo.list_all()
+                x = self.package_repo.list_all()
+                return json.dumps(x, cls=CustomJsonEncoder)
             
             # Check for the presence of specific query parameters
+
             package_id = params.get('package_id')
             driver_id = params.get('driver_id')
             warehouse_id = params.get('warehouse_id')
+            
             if package_id:
-                return self.package_repo.get_by_id(package_id)
+                x = self.package_repo.get_by_id(package_id)
+                return json.dumps(x, cls=CustomJsonEncoder)
             elif driver_id:
-                return self.package_repo.get_by_driver(driver_id)
+                x = self.package_repo.get_by_driver(driver_id)
+                return json.dumps(x, cls=CustomJsonEncoder)
             elif warehouse_id:
-                return self.package_repo.get_by_warehouse(warehouse_id)
+                x = self.package_repo.get_by_warehouse(warehouse_id)
+                return json.dumps(x, cls=CustomJsonEncoder) 
             else:
                 # If neither package_id nor driver_id nor warehouse_id is provided, return an error
                 return {"error": "Please provide either package_id or driver_id or warehouse_id as a parameter"}
+                
     # expose=True
     # @cherrypy.tools.json_out()
     # @cherrypy.tools.json_in()
