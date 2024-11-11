@@ -11,22 +11,25 @@ class Package:
         self.collection = self.db[config['collection']]
 
 
-    def create(self, data,driver_id,warehouse_id):
+    def create(self, data,warehouse_id):
         try:
             #add reference to driver and warehouse
-            data['driver_id'] = ObjectId(driver_id)
             data['warehouse_id'] = ObjectId(warehouse_id)
 
             result = self.collection.insert_one(data)
             return str(result.inserted_id)
         except InvalidId:
-            raise ValueError("Invalid ObjectId for driver or warehouse")
+            raise ValueError("Invalid ObjectId for warehouse")
         except Exception as e:
             raise Exception(f"Error inserting document: {str(e)}")
         
 
     def update(self, package_id, data):
         try:
+            # Convert driver_id to ObjectId if it exists in the data
+            if 'driver_id' in data:
+                data['driver_id'] = ObjectId(data['driver_id'])
+                
             result = self.collection.update_one({'_id': ObjectId(package_id)}, {'$set': data})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
@@ -49,6 +52,13 @@ class Package:
             return self.json_encoder(packages)
         except Exception as e:
             raise Exception(f"Error listing packages: {str(e)}")
+        
+    def list_all_without_driver(self):
+        try:
+            packages = list(self.collection.find({'driver_id': {'$exists': False}}))
+            return self.json_encoder(packages)
+        except Exception as e:
+            raise Exception(f"Error listing packages without driver: {str(e)}")
         
                 
         

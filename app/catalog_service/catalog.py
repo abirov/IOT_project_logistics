@@ -116,8 +116,8 @@ class CatalogService:
         return self.logpoint_repo.list_all()
     
     #package functionality
-    def create_package(self, data, driver_id, warehouse_id):
-        return self.package_repo.create(data, driver_id, warehouse_id)
+    def create_package(self, data, warehouse_id):
+        return self.package_repo.create(data, warehouse_id)
     
     @cherrypy.tools.json_out(cls=CustomJsonEncoder)
     def get_package_by_id(self, package_id):
@@ -126,11 +126,14 @@ class CatalogService:
     def get_package_by_driver(self, driver_id):
         return self.package_repo.get_by_driver(driver_id)
     
+    def get_package_without_driver(self):
+        return self.package_repo.list_all_without_driver()
+    
     def get_package_by_warehouse(self, warehouse_id):
         return self.package_repo.get_by_warehouse(warehouse_id)
     
-    def update_package(self, package_id, data):
-        return self.package_repo.update(package_id, data)
+    def update_package(self, package_id,data):
+        return self.package_repo.update(package_id,data)
     
     def delete_package(self, package_id):
         return self.package_repo.delete(package_id)
@@ -236,6 +239,7 @@ class CatalogService:
             package_id = params.get('package_id')
             driver_id = params.get('driver_id')
             warehouse_id = params.get('warehouse_id')
+            no_driver = True
             
             if package_id:
                 x = self.package_repo.get_by_id(package_id)
@@ -246,15 +250,103 @@ class CatalogService:
             elif warehouse_id:
                 x = self.package_repo.get_by_warehouse(warehouse_id)
                 return json.dumps(x, cls=CustomJsonEncoder) 
+            elif no_driver:
+                x = self.package_repo.list_all_without_driver()
+                return json.dumps(x, cls=CustomJsonEncoder)
             else:
                 # If neither package_id nor driver_id nor warehouse_id is provided, return an error
                 return {"error": "Please provide either package_id or driver_id or warehouse_id as a parameter"}
                 
-    # expose=True
-    # @cherrypy.tools.json_out()
-    # @cherrypy.tools.json_in()
-    # def POST(self, *uri, **params):
+    exposed=True
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def POST(self, *uri, **params):
+        if len(uri)>0 and uri[0] == 'driver':
+            data = cherrypy.request.json
+            return self.put_driver(data)
         
+        elif len(uri)>0 and uri[0] == 'warehouse':
+            data = cherrypy.request.json
+            return self.create_warehouse(data)
+        
+        elif len(uri)>0 and uri[0] == 'feedback':
+            data = cherrypy.request.json
+            return self.create_feedback(data)
+        
+        elif len(uri)>0 and uri[0] == 'vehicle':
+            data = cherrypy.request.json
+            return self.create_vehicle(data)
+        
+        elif len(uri)>0 and uri[0] == 'logpoint':
+            data = cherrypy.request.json
+            return self.create_logpoint(data)
+        
+        elif len(uri)>0 and uri[0] == 'package':
+            data = cherrypy.request.json
+            warehouse_id = params.get('warehouse_id')
+            return self.create_package(data,warehouse_id)
+        
+    exposed=True
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def DELETE(self, *uri, **params):
+        if len(uri)>0 and uri[0] == 'driver':
+            driver_id = params.get('driver_id')
+            return self.delete_driver(driver_id)
+        
+        elif len(uri)>0 and uri[0] == 'warehouse':
+            warehouse_id = params.get('warehouse_id')
+            return self.delete_warehouse(warehouse_id)
+        
+        elif len(uri)>0 and uri[0] == 'feedback':
+            feedback_id = params.get('feedback_id')
+            return self.delete_feedback(feedback_id)
+        
+        elif len(uri)>0 and uri[0] == 'vehicle':
+            vehicle_id = params.get('vehicle_id')
+            return self.delete_vehicle(vehicle_id)
+        
+        elif len(uri)>0 and uri[0] == 'logpoint':
+            point_id = params.get('point_id')
+            return self.delete_logpoint(point_id)
+        
+        elif len(uri)>0 and uri[0] == 'package':
+            package_id = params.get('package_id')
+            return self.delete_package(package_id)
+        
+    exposed=True
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def PUT(self, *uri, **params):
+        if len(uri)>0 and uri[0] == 'driver':
+            driver_id = params.get('driver_id')
+            data = cherrypy.request.json
+            return self.update_driver(driver_id, data)
+        
+        elif len(uri)>0 and uri[0] == 'warehouse':
+            warehouse_id = params.get('warehouse_id')
+            data = cherrypy.request.json
+            return self.update_warehouse(warehouse_id, data)
+        
+        elif len(uri)>0 and uri[0] == 'feedback':
+            feedback_id = params.get('feedback_id')
+            data = cherrypy.request.json
+            return self.update_feedback(feedback_id, data)
+        
+        elif len(uri)>0 and uri[0] == 'vehicle':
+            vehicle_id = params.get('vehicle_id')
+            data = cherrypy.request.json
+            return self.update_vehicle(vehicle_id, data)
+        
+        elif len(uri)>0 and uri[0] == 'logpoint':
+            point_id = params.get('point_id')
+            data = cherrypy.request.json
+            return self.update_logpoint(point_id, data)
+        
+        elif len(uri)>0 and uri[0] == 'package':
+            package_id = params.get('package_id')
+            data = cherrypy.request.json
+            return self.update_package(package_id, data)
 
 
 

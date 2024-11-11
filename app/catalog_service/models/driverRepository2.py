@@ -1,40 +1,40 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-from .util import load_config  # Import the utility function
+from .util import load_config  # Import the utility function 
+from .modelDRIVER import Driver
 
 class Driver:
     def __init__(self, config_file):
-        config = load_config('driver', config_file)  # Use the utility function to load the config
+        config = load_config('driver', config_file)
         self.client = MongoClient(config['host'], config['port'])
         self.db = self.client[config['db']]
         self.collection = self.db[config['collection']]
 
-
     def create(self, data):
         try:
-            # drvir = Driver(data['name'], data['email'], data['phone'], data['rating'], data['total_ratings'], data['total_rides'], data['created_at'], data['updated_at'])
-            result = self.collection.insert_one(data)
+            driver = Driver(data['name'], data['email'], data['phone'], data['address'], data['license_number'])
+            result = self.collection.insert_one(driver.to_dict())
             return str(result.inserted_id)
         except Exception as e:
             raise Exception(f"Error inserting document: {str(e)}")
-
+        
     def get_by_id(self, driver_id):
         try:
             driver = self.collection.find_one({'_id': ObjectId(driver_id)})
-            return self.json_encoder(driver) if driver else None
+            return Driver.from_dict(driver) if driver else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
         except Exception as e:
             raise Exception(f"Error retrieving driver by ID: {str(e)}")
-
+        
     def get_by_name(self, driver_name):
         try:
-            driver = self.collection.find_one({'name': driver_name})
-            return self.json_encoder(driver) if driver else None
+            driver = self.collection.find_one({'name': driver_name})    
+            return Driver.from_dict(driver) if driver else None
         except Exception as e:
             raise Exception(f"Error retrieving driver by name: {str(e)}")
-
+        
     def update(self, driver_id, data):
         try:
             result = self.collection.update_one({'_id': ObjectId(driver_id)}, {'$set': data})
@@ -43,7 +43,7 @@ class Driver:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
         except Exception as e:
             raise Exception(f"Error updating driver: {str(e)}")
-
+        
     def delete(self, driver_id):
         try:
             result = self.collection.delete_one({'_id': ObjectId(driver_id)})
@@ -52,50 +52,31 @@ class Driver:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
         except Exception as e:
             raise Exception(f"Error deleting driver: {str(e)}")
-
+        
     def list_all(self):
         try:
             drivers = list(self.collection.find())
-            return self.json_encoder(drivers)
+            return [Driver.from_dict(driver) for driver in drivers]
         except Exception as e:
             raise Exception(f"Error listing drivers: {str(e)}")
-
-    def update_reputation(self, driver_id, new_average):
+    
+    def get_driver_by_package_id(self, package_id):
         try:
-            self.collection.update_one(
-                {'_id': ObjectId(driver_id)},
-                {'$set': {'reputation': new_average}}
-            )
-        except InvalidId:
-            raise ValueError(f"Invalid ObjectId: {driver_id}")
+            pipeline = [
+                {"$match": {"_id": ObjectId(package_id)}},  # Match the specific package by its _id
+                {"$lookup": {
+                    "from": "drivers",       # Join with the drivers collection
+                    "localField": "driver_id",  # Field in the package document to match
+                    "foreignField": "_id",   # Field in the driver document to match
+                    "as": "driver"           # Output the joined driver document as "driver"
+                }},
+                {"$unwind": "$driver"},       # Convert driver array to a single object
+                {"$replaceRoot": {"newRoot": "$driver"}}  # Replace the root document with the driver document
+            ]
+            
+            # Execute the aggregation query and return the result
+            result = list(self.db.package.aggregate(pipeline))
+            return [Driver.from_dict(driver) for driver in result]
         except Exception as e:
-            raise Exception(f"Error updating reputation: {str(e)}")
-
-    @staticmethod
-    def json_encoder(data):
-        if isinstance(data, list):
-            for doc in data:
-                doc['_id'] = str(doc['_id'])
-        elif data and '_id' in data:
-            data['_id'] = str(data['_id'])
-        return data
-
-
-
-
-    def get_by_package_id(self, package_id):
-        return self.db.driver.aggregate([
-            {
-                '$lookup': {
-                    'from': 'package',
-                    'localField': '_id',
-                    'foreignField': 'driver_id',
-                    'as': 'packages'
-                }
-            },
-            {
-                '$match': {
-                    'packages.package_id': package_id  # Match inside the joined 'packages' array
-                }
-            }
-        ])
+            raise Exception(f"Error retrieving driver by package ID: {str(e)}")
+        
