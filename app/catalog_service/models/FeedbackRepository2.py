@@ -2,8 +2,8 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
 from .util import load_config  # Import the utility function
-
-class Feedback:
+from .modelFEEDBACK import Feedback  # Import the Feedback model
+class FeedbackRepository:
     def __init__(self, config_file):
         config = load_config('feedback', config_file)  # Use the utility function to load the config
         self.client = MongoClient(config['host'], config['port'])

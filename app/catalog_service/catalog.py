@@ -16,7 +16,7 @@ class CustomJsonEncoder(json.JSONEncoder):
             return str(obj)
         return super().default(obj)
 
-
+# class CatalogService:
 class CatalogService:
 
     def __init__(self, config_file='config.json'):

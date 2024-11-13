@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from .util import load_config  # Import the utility function 
 from .modelDRIVER import Driver
 
-class Driver:
+class DriverRepository:
     def __init__(self, config_file):
         config = load_config('driver', config_file)
         self.client = MongoClient(config['host'], config['port'])

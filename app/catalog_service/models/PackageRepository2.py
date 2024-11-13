@@ -4,7 +4,7 @@ from .modelPACKAGE import package
 from pymongo import MongoClient
 from bson.errors import InvalidId
 
-class Package:
+class PackageRepository:
     def __init__(self, config_file):
         config = load_config('package', config_file)
         self.client = MongoClient(config['host'], config['port'])

@@ -2,9 +2,9 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
 from .util import load_config  # Import the utility function
-from .modelWAREHOUSE import warehouse
+from .modelWAREHOUSE import Warehouse
 
-class Warehouse:
+class WarehouseRepository:
 
     def __init__(self, config_file):
         config = load_config('warehouse', config_file)  # Use the utility function to load the config
@@ -14,7 +14,7 @@ class Warehouse:
 
     def create(self, data):
         try:
-            warehouse = warehouse(data['name'], data['address'], phone=data['phone'], email=data['email'], reputation=None)
+            warehouse = Warehouse(data['name'], data['address'], phone=data['phone'], email=data['email'], reputation=None)
             result = self.collection.insert_one(warehouse.to_dict())
             return str(result.inserted_id)
         except Exception as e:
