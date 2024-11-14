@@ -21,7 +21,7 @@ class DriverRepository:
         
     def get_by_id(self, driver_id):
         try:
-            driver = self.collection.find_one({'_id': ObjectId(driver_id)})
+            driver = self.collection.find_one({'_id':(driver_id)})
             return Driver.from_dict(driver) if driver else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
@@ -37,7 +37,7 @@ class DriverRepository:
         
     def update(self, driver_id, data):
         try:
-            result = self.collection.update_one({'_id': ObjectId(driver_id)}, {'$set': data})
+            result = self.collection.update_one({'_id': (driver_id)}, {'$set': data})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
@@ -46,7 +46,7 @@ class DriverRepository:
         
     def delete(self, driver_id):
         try:
-            result = self.collection.delete_one({'_id': ObjectId(driver_id)})
+            result = self.collection.delete_one({'_id':(driver_id)})
             return {"deleted_count": result.deleted_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
@@ -63,9 +63,9 @@ class DriverRepository:
     def get_driver_by_package_id(self, package_id):
         try:
             pipeline = [
-                {"$match": {"_id": ObjectId(package_id)}},  # Match the specific package by its _id
+                {"$match": {"_id": (package_id)}},  # Match the specific package by its _id
                 {"$lookup": {
-                    "from": "drivers",       # Join with the drivers collection
+                    "from": "driver",       # Join with the drivers collection
                     "localField": "driver_id",  # Field in the package document to match
                     "foreignField": "_id",   # Field in the driver document to match
                     "as": "driver"           # Output the joined driver document as "driver"
@@ -76,7 +76,10 @@ class DriverRepository:
             
             # Execute the aggregation query and return the result
             result = list(self.db.package.aggregate(pipeline))
-            return [Driver.from_dict(driver) for driver in result]
+            if result:
+                return Driver.from_dict(result[0])
+            else:
+                return None
         except Exception as e:
             raise Exception(f"Error retrieving driver by package ID: {str(e)}")
         

@@ -1,7 +1,7 @@
 from bson import ObjectId
 
 class Driver:
-    def __init__(self, name: str, email: str, phone: str, address: str, license_number: str, _id: ObjectId = None):
+    def __init__(self, name: str, email: str, phone: str, address: str, license_number: str, _id: ObjectId= ObjectId()):
         self.name = name
         self.email = email
         self.phone = phone
@@ -13,7 +13,7 @@ class Driver:
         
 
     def __str__(self):
-        return f"Driver(name: {self.name}, email: {self.email}, phone: {self.phone}, address: {self.address}, license_number: {self.license_number})"
+        return f"Driver(id:{self._id} ,name: {self.name}, email: {self.email}, phone: {self.phone}, address: {self.address}, license_number: {self.license_number})"
     
     def to_dict(self):
         return {
@@ -32,6 +32,6 @@ class Driver:
             phone=data["phone"],
             address=data["address"],
             license_number=data["license_number"],
-            _id=ObjectId(data["_id"]) if data["_id"] else None
+            _id = data.get("_id")
         )
     

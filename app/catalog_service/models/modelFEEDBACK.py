@@ -1,6 +1,6 @@
 from bson import ObjectId
 
-class feedback:
+class Feedback:
     def __init__(self, package_id: ObjectId, rating: int, comment: str, _id: ObjectId = None, warehouse_id: ObjectId = None, driver_id: ObjectId = None):
         self.package_id = package_id
         self.rating = rating
