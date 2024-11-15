@@ -22,7 +22,7 @@ class WarehouseRepository:
         
     def get_by_id(self, warehouse_id):
         try:
-            warehouse = self.collection.find_one({'_id': ObjectId(warehouse_id)})
+            warehouse = self.collection.find_one({'_id':(warehouse_id)})
             return warehouse.from_dict(warehouse) if warehouse else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
@@ -32,7 +32,7 @@ class WarehouseRepository:
 
     def update(self, warehouse_id, data):
         try:
-            result = self.collection.update_one({'_id': ObjectId(warehouse_id)}, {'$set': data})
+            result = self.collection.update_one({'_id':(warehouse_id)}, {'$set': data})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
@@ -41,7 +41,7 @@ class WarehouseRepository:
     
     def delete(self, warehouse_id):
         try:
-            result = self.collection.delete_one({'_id': ObjectId(warehouse_id)})
+            result = self.collection.delete_one({'_id': (warehouse_id)})
             return {"deleted_count": result.deleted_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")

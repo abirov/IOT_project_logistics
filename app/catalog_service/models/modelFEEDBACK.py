@@ -24,7 +24,7 @@ class Feedback:
     
     @staticmethod
     def from_dict(data):
-        return feedback(
+        return Feedback(
             package_id=ObjectId(data["package_id"]),
             rating=data["rating"],
             comment=data["comment"],

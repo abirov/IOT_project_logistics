@@ -22,7 +22,7 @@ class PackageRepository:
         
     def get_by_id(self, package_id):
         try:
-            package = self.collection.find_one({'_id': ObjectId(package_id)})
+            package = self.collection.find_one({'_id': (package_id)})
             return package.from_dict(package) if package else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
@@ -31,7 +31,7 @@ class PackageRepository:
         
     def get_by_warehouse_id(self, warehouse_id):
         try:
-            package = self.collection.find_one({'warehouse_id': ObjectId(warehouse_id)})    
+            package = self.collection.find_one({'warehouse_id':(warehouse_id)})    
             return package.from_dict(package) if package else None
         except Exception as e:
             raise Exception(f"Error retrieving package by warehouse ID: {str(e)}")
@@ -40,9 +40,9 @@ class PackageRepository:
         try:
             # Convert driver_id to ObjectId if it exists in the data\
             if 'driver_id' in data:
-                data['driver_id'] = ObjectId(data['driver_id'])
+                data['driver_id'] = (data['driver_id'])
             
-            result = self.collection.update_one({'_id': ObjectId(package_id)}, {'$set': data})
+            result = self.collection.update_one({'_id':(package_id)}, {'$set': data})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
@@ -51,7 +51,7 @@ class PackageRepository:
         
     def delete(self, package_id):
         try:
-            result = self.collection.delete_one({'_id': ObjectId(package_id)})
+            result = self.collection.delete_one({'_id':(package_id)})
             return {"deleted_count": result.deleted_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
@@ -74,28 +74,28 @@ class PackageRepository:
         
     def get_by_driver_id(self, driver_id):
         try:
-            packages = list(self.collection.find({'driver_id': ObjectId(driver_id)}))
+            packages = list(self.collection.find({'driver_id':(driver_id)}))
             return [package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by driver ID: {str(e)}")
         
     def get_by_warehouse_id(self, warehouse_id):
         try:
-            packages = list(self.collection.find({'warehouse_id': ObjectId(warehouse_id)}))
+            packages = list(self.collection.find({'warehouse_id':(warehouse_id)}))
             return [package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by warehouse ID: {str(e)}")
         
     def get_by_driver_id_and_status(self, driver_id, status):
         try:
-            packages = list(self.collection.find({'driver_id': ObjectId(driver_id), 'status': status}))
+            packages = list(self.collection.find({'driver_id':(driver_id), 'status': status}))
             return [package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by driver ID and status: {str(e)}")
         
     def get_by_warehouse_id_and_status(self, warehouse_id, status):
         try:
-            packages = list(self.collection.find({'warehouse_id': ObjectId(warehouse_id), 'status': status}))
+            packages = list(self.collection.find({'warehouse_id':(warehouse_id), 'status': status}))
             return [package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by warehouse ID and status: {str(e)}")
@@ -109,7 +109,7 @@ class PackageRepository:
         
     def update_status(self, package_id, status):
         try:
-            result = self.collection.update_one({'_id': ObjectId(package_id)}, {'$set': {'status': status}})
+            result = self.collection.update_one({'_id':(package_id)}, {'$set': {'status': status}})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
@@ -118,7 +118,7 @@ class PackageRepository:
         
     def assign_driver(self, package_id, driver_id):
         try:
-            result = self.collection.update_one({'_id': ObjectId(package_id)}, {'$set': {'driver_id': ObjectId(driver_id), 'status': 'en route'}})
+            result = self.collection.update_one({'_id': (package_id)}, {'$set': {'driver_id': ObjectId(driver_id), 'status': 'en route'}})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
@@ -128,7 +128,7 @@ class PackageRepository:
     def mark_as_delivered(self, package_id):
         try:
             result = self.collection.update_one(
-                {'_id': ObjectId(package_id)},
+                {'_id': (package_id)},
                 {'$set': {'status': 'delivered'}}
             )
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}

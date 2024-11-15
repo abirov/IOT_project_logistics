@@ -20,7 +20,7 @@ class FeedbackRepository:
         
     def get_by_id(self, feedback_id):
         try:
-            feedback = self.collection.find_one({'_id': ObjectId(feedback_id)})
+            feedback = self.collection.find_one({'_id':(feedback_id)})
             return Feedback.from_dict(feedback) if feedback else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {feedback_id}")
@@ -36,7 +36,7 @@ class FeedbackRepository:
         
     def update(self, feedback_id, data):
         try:
-            result = self.collection.update_one({'_id': ObjectId(feedback_id)}, {'$set': data})
+            result = self.collection.update_one({'_id':(feedback_id)}, {'$set': data})
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {feedback_id}")
@@ -45,7 +45,7 @@ class FeedbackRepository:
         
     def delete(self, feedback_id):
         try:
-            result = self.collection.delete_one({'_id': ObjectId(feedback_id)})
+            result = self.collection.delete_one({'_id':(feedback_id)})
             return {"deleted_count": result.deleted_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {feedback_id}")
