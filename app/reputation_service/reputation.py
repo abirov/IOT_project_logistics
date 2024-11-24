@@ -13,21 +13,16 @@ class ReputationService:
 
     @staticmethod
     def _calculate_reputation(feedbacks):
-        """
-        Calculate reputation based on persistent feedback data.
-        - Incorporates weighted scores if available.
-        - Uses standard average for simplicity but can be enhanced with custom logic.
-        """
+        
         total_weighted_score = 0
         total_weight = 0
 
         for feedback in feedbacks:
             score = feedback['score']  # Numeric feedback score
             weight = feedback.get('weight', 1)  # Optional: Use a weight field from the feedback data
-            sentiment_multiplier = feedback.get('sentiment', 1.0)  # Optional: Sentiment adjustment (default 1.0)
-
+         
             # Weighted score
-            weighted_score = score * weight * sentiment_multiplier
+            weighted_score = score * weight
             total_weighted_score += weighted_score
             total_weight += weight
 
@@ -42,7 +37,7 @@ class ReputationService:
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def recalculate_driver_reputation(self, driver_id):
-        """Recalculate and update the reputation of a specific driver."""
+       
         try:
             feedbacks = self._get_feedback(driver_id=driver_id)
             if not feedbacks:
@@ -62,7 +57,7 @@ class ReputationService:
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def recalculate_warehouse_reputation(self, warehouse_id):
-        """Recalculate and update the reputation of a specific warehouse."""
+       
         try:
             feedbacks = self._get_feedback(warehouse_id=warehouse_id)
             if not feedbacks:
@@ -75,34 +70,6 @@ class ReputationService:
             # Update the warehouse's reputation in the catalog
             self._update_warehouse_reputation(warehouse_id, reputation)
             return {"status": "success", "warehouse_id": warehouse_id, "reputation": reputation}
-        except Exception as e:
-            cherrypy.response.status = 500
-            return {"status": "error", "error": str(e)}
-
-    @cherrypy.expose
-    @cherrypy.tools.json_out()
-    def get_driver_reputation(self, driver_id):
-        """Fetch the current reputation of a specific driver."""
-        try:
-            url = f"{self.catalog_url}/drivers/{driver_id}"
-            response = requests.get(url)
-            response.raise_for_status()
-            driver = response.json()
-            return {"driver_id": driver_id, "reputation": driver.get("reputation", "Not available")}
-        except Exception as e:
-            cherrypy.response.status = 500
-            return {"status": "error", "error": str(e)}
-
-    @cherrypy.expose
-    @cherrypy.tools.json_out()
-    def get_warehouse_reputation(self, warehouse_id):
-        """Fetch the current reputation of a specific warehouse."""
-        try:
-            url = f"{self.catalog_url}/warehouses/{warehouse_id}"
-            response = requests.get(url)
-            response.raise_for_status()
-            warehouse = response.json()
-            return {"warehouse_id": warehouse_id, "reputation": warehouse.get("reputation", "Not available")}
         except Exception as e:
             cherrypy.response.status = 500
             return {"status": "error", "error": str(e)}
