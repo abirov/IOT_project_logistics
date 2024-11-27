@@ -1,5 +1,6 @@
 import requests
 import os
+import cherrypy
 
 class ReputationService:
     def __init__(self, catalog_url):

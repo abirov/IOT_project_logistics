@@ -11,12 +11,10 @@ class FeedbackRepository:
         self.collection = self.db[config['collection']]
 
     def create(self, data):
-        try:
-            Feedback = Feedback(data['package_id'], data['rating'], data['comment'], data['warehouse_id'], data['driver_id'])
-            result = self.collection.insert_one(Feedback.to_dict())
-            return str(result.inserted_id)
-        except Exception as e:
-            raise Exception(f"Error inserting feedback: {str(e)}")
+        feedback = Feedback(**data)
+        feedback_dict = feedback.to_dict()
+        result = self.collection.insert_one(feedback_dict)
+        return str(result.inserted_id)
         
     def get_by_id(self, feedback_id):
         try:
@@ -27,13 +25,37 @@ class FeedbackRepository:
         except Exception as e:
             raise Exception(f"Error retrieving feedback by ID: {str(e)}")
         
+    def list_all(self):
+        try:
+            feedbacks = self.collection.find()
+            return [Feedback.from_dict(feedback) for feedback in feedbacks]
+        except Exception as e:
+            raise Exception(f"Error listing feedback: {str(e)}")
+   
     def get_by_rating(self, feedback_rating):
         try:
             feedback = self.collection.find_one({'rating': feedback_rating})    
             return Feedback.from_dict(feedback) if feedback else None
         except Exception as e:
             raise Exception(f"Error retrieving feedback by rating: {str(e)}")
+
+    def get_by_driver_id(self, driver_id):
+        try:
+            feedback = self.collection.find_one({'driver_id':(driver_id)})
+            return Feedback.from_dict(feedback) if feedback else None
+        except InvalidId:
+            raise ValueError(f"Invalid ObjectId: {driver_id}")
+        except Exception as e:
+            raise Exception(f"Error retrieving feedback by driver ID: {str(e)}")
         
+    def get_by_warehouse_id(self, warehouse_id):
+        try:
+            feedback = self.collection.find_one({'warehouse_id':(warehouse_id)})
+            return Feedback.from_dict(feedback) if feedback else None
+        except InvalidId:
+            raise ValueError(f"Invalid ObjectId: {warehouse_id}")
+        except Exception as e:
+            raise Exception(f"Error retrieving feedback by warehouse ID: {str(e)}")    
     def update(self, feedback_id, data):
         try:
             result = self.collection.update_one({'_id':(feedback_id)}, {'$set': data})

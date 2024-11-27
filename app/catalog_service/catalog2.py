@@ -201,9 +201,72 @@ class packageServer:
         else:
             raise cherrypy.HTTPError(404, "Invalid URI")
         
+class FeedbackServer: 
+    def __init__(self, config_file='config.json'):
+        self.feedback_repo = FeedbackRepository(config_file=config_file)
 
+    exposed = True
+    @cherrypy.tools.json_out()
+    def GET(self, *uri, **params):
+        if "feedbacks" in uri:
+            # If no specific parameter is provided, list all feedbacks
+            if len(params) == 0:
+                feedbacks = self.feedback_repo.list_all()
+                return [feedback.to_dict() for feedback in feedbacks]
+            # If a feedback ID is provided, get the feedback by ID
+            elif "feedback_id" in params:
+                feedback_id = params["feedback_id"]
+                feedback = self.feedback_repo.get_by_id(feedback_id)
+                return feedback.to_dict() if feedback else None
+            # If a driver ID is provided, get the feedback by driver ID
+            elif "driver_id" in params:
+                driver_id = params["driver_id"]
+                feedback = self.feedback_repo.get_by_driver_id(driver_id)
+                return feedback.to_dict() if feedback else None
+            # If a warehouse ID is provided, get the feedback by warehouse ID
+            elif "warehouse_id" in params:
+                warehouse_id = params["warehouse_id"]
+                feedback = self.feedback_repo.get_by_warehouse_id(warehouse_id)
+                return feedback.to_dict() if feedback else None
+            else:
+                raise cherrypy.HTTPError(400, "Invalid GET request")
+        else:
+            raise cherrypy.HTTPError(404, "Invalid URI")
         
-
+    exposed = True
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def POST(self, *uri, **params):
+        if "feedbacks" in uri:
+            data = cherrypy.request.json
+            feedback_id = self.feedback_repo.create(data)
+            return {"feedback_id": feedback_id}
+        else:
+            raise cherrypy.HTTPError(404, "Invalid URI")
+        
+    exposed = True
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def PUT(self, *uri, **params):
+        if "feedbacks" in uri:
+            data = cherrypy.request.json
+            feedback_id = params["feedback_id"]
+            result = self.feedback_repo.update(feedback_id, data)
+            return result
+        else:
+            raise cherrypy.HTTPError(404, "Invalid URI")
+        
+    exposed = True
+    @cherrypy.tools.json_out()
+    def DELETE(self, *uri, **params):
+        if "feedbacks" in uri:
+            feedback_id = params["feedback_id"]
+            result = self.feedback_repo.delete(feedback_id)
+            return result
+        else:
+            raise cherrypy.HTTPError(404, "Invalid URI")
+        
+    
 
 
         
@@ -218,6 +281,9 @@ if __name__ == '__main__':
         }
     }
     cherrypy.tree.mount(driverServer(), '/drivers', conf)
+    cherrypy.tree.mount(warehouseServer(), '/warehouses', conf)
+    cherrypy.tree.mount(packageServer(), '/packages', conf)
+    cherrypy.tree.mount(FeedbackServer(), '/feedbacks', conf)
     cherrypy.config.update({'server.socket_port': 8080})
     cherrypy.engine.start()
     cherrypy.engine.block()
