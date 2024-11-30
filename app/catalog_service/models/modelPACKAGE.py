@@ -1,6 +1,6 @@
 from bson import ObjectId
 
-class package:
+class Package:
     def __init__(self, name: str, weight: float, dimensions: dict, warehouse_id: ObjectId, driver_id: ObjectId, status: str, _id: ObjectId = None, delivery_address: dict = None):
         self.name = name
         self.weight = weight
@@ -27,7 +27,7 @@ class package:
         }
     @staticmethod
     def from_dict(data):
-        return package(
+        return Package(
             name=data["name"],
             weight=data["weight"],
             dimensions=data["dimensions"],

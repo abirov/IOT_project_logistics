@@ -1,6 +1,6 @@
 from bson import ObjectId
 from .util import load_config
-from .modelPACKAGE import package
+from .modelPACKAGE import Package 
 from pymongo import MongoClient
 from bson.errors import InvalidId
 
@@ -14,7 +14,7 @@ class PackageRepository:
     def create(self, data):
         try:
             status = data.get('status', 'in warehouse')
-            package= package(data['name'], data['weight'], data['dimensions'], ObjectId(data['warehouse_id']), driver_id = None, status = status , delivery_address=data['delivery_address'])
+            package= Package(data['name'], data['weight'], data['dimensions'], ObjectId(data['warehouse_id']), driver_id = None, status = status , delivery_address=data['delivery_address'])
             result = self.collection.insert_one(package.to_dict())
             return str(result.inserted_id)
         except Exception as e:
@@ -23,7 +23,7 @@ class PackageRepository:
     def get_by_id(self, package_id):
         try:
             package = self.collection.find_one({'_id': (package_id)})
-            return package.from_dict(package) if package else None
+            return Package.from_dict(package) if package else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
         except Exception as e:
@@ -32,7 +32,7 @@ class PackageRepository:
     def get_by_warehouse_id(self, warehouse_id):
         try:
             package = self.collection.find_one({'warehouse_id':(warehouse_id)})    
-            return package.from_dict(package) if package else None
+            return Package.from_dict(package) if package else None
         except Exception as e:
             raise Exception(f"Error retrieving package by warehouse ID: {str(e)}")
         
@@ -61,49 +61,49 @@ class PackageRepository:
     def list_all_packages_without_driver(self):
         try:
             packages = list(self.collection.find({'driver_id': None}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages without driver: {str(e)}")
         
     def list_all(self):
         try:
             packages = list(self.collection.find())
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error listing packages: {str(e)}")
         
     def get_by_driver_id(self, driver_id):
         try:
             packages = list(self.collection.find({'driver_id':(driver_id)}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by driver ID: {str(e)}")
         
     def get_by_warehouse_id(self, warehouse_id):
         try:
             packages = list(self.collection.find({'warehouse_id':(warehouse_id)}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by warehouse ID: {str(e)}")
         
     def get_by_driver_id_and_status(self, driver_id, status):
         try:
             packages = list(self.collection.find({'driver_id':(driver_id), 'status': status}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by driver ID and status: {str(e)}")
         
     def get_by_warehouse_id_and_status(self, warehouse_id, status):
         try:
             packages = list(self.collection.find({'warehouse_id':(warehouse_id), 'status': status}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by warehouse ID and status: {str(e)}")
         
     def get_by_status(self, status):
         try:
             packages = list(self.collection.find({'status': status}))
-            return [package.from_dict(package) for package in packages]
+            return [Package.from_dict(package) for package in packages]
         except Exception as e:
             raise Exception(f"Error retrieving packages by status: {str(e)}")
         
