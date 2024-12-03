@@ -1,7 +1,7 @@
 from bson import ObjectId
 
 class Package:
-    def __init__(self, name: str, weight: float, dimensions: dict, warehouse_id: ObjectId, driver_id: ObjectId, status: str, _id: ObjectId = None, delivery_address: dict = None):
+    def __init__(self, name: str, weight: float, dimensions: dict, warehouse_id: str, driver_id:str , status: str, _id: ObjectId =ObjectId(), delivery_address: dict = None):
         self.name = name
         self.weight = weight
         self.dimensions = dimensions
@@ -35,5 +35,5 @@ class Package:
             driver_id=ObjectId(data["driver_id"]) if data["driver_id"] else None,
             status=data["status"],
             delivery_address=data["delivery_address"],
-            _id=ObjectId(data["_id"]) if data["_id"] else None
+            _id=data.get("_id")
         )

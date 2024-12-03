@@ -23,11 +23,18 @@ class WarehouseRepository:
     def get_by_id(self, warehouse_id):
         try:
             warehouse = self.collection.find_one({'_id':(warehouse_id)})
-            return warehouse.from_dict(warehouse) if warehouse else None
+            return Warehouse.from_dict(warehouse) if warehouse else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
         except Exception as e:
             raise Exception(f"Error retrieving warehouse by ID: {str(e)}")
+        
+    def get_by_name(self, warehouse_name):
+        try:
+            warehouse = self.collection.find_one({'name': warehouse_name})
+            return Warehouse.from_dict(warehouse) if warehouse else None
+        except Exception as e:
+            raise Exception(f"Error retrieving warehouse by name: {str(e)}")
         
 
     def update(self, warehouse_id, data):

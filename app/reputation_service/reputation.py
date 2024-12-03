@@ -97,7 +97,19 @@ class ReputationService:
         requests.put(url, json=data)
 
 if __name__ == '__main__':
-    catalog_url = os.getenv('CATALOG_URL')
+    catalog_url = os.getenv('http://localhost:8080')
     reputation_service = ReputationService(catalog_url)
+    conf = {
+        '/': {
+            'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
+            'tools.sessions.on': True,
+        }
+    }
+    cherrypy.tree.mount(reputation_service, '/', conf)
+    cherrypy.config.update({'server.socket_port': 9090})
+    cherrypy.engine.start()
+    cherrypy.engine.block()
+
+
    
 

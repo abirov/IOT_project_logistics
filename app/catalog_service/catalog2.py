@@ -89,7 +89,7 @@ class warehouseServer:
             # If no specific parameter is provided, list all warehouses
             if len(params) == 0:
                 warehouses = self.warehouse_repo.list_all()
-                return [warehouse.to_dict() for warehouse in warehouses]
+                return [warehouse for warehouse in warehouses]
             # If a warehouse ID is provided, get the warehouse by ID
             elif "warehouse_id" in params:
                 warehouse_id = params["warehouse_id"]
@@ -187,6 +187,11 @@ class packageServer:
             data = cherrypy.request.json
             package_id = params["package_id"]
             result = self.package_repo.update(package_id, data)
+            return result
+        elif "assign_driver" in uri:
+            package_id = params["package_id"]
+            driver_id = params["driver_id"]
+            result = self.package_repo.assign_driver(package_id, driver_id)
             return result
         else:
             raise cherrypy.HTTPError(404, "Invalid URI")

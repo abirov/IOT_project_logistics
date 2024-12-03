@@ -1,7 +1,7 @@
 from bson import ObjectId
 
 class Warehouse:
-    def __init__(self, name: str, address: dict , _id: ObjectId = None, phone: str = None, email: str = None, reputation: dict = None):
+    def __init__(self, name: str, address: dict , _id: ObjectId =ObjectId() , phone: str = None, email: str = None, reputation: dict = None):
         self.name = name
         self.address = address #ddress = {"street": "123 Main St", "city": "Springfield", "state": "IL", "zip": "62701"}
         self._id = _id
