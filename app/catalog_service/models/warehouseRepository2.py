@@ -58,7 +58,7 @@ class WarehouseRepository:
     def list_all(self):
         try:
             warehouses = list(self.collection.find())
-            return warehouses
+            return [Warehouse.from_dict(warehouse) for warehouse in warehouses]
         except Exception as e:
             raise Exception(f"Error listing warehouses: {str(e)}")
         

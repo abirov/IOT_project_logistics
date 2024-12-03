@@ -89,7 +89,7 @@ class warehouseServer:
             # If no specific parameter is provided, list all warehouses
             if len(params) == 0:
                 warehouses = self.warehouse_repo.list_all()
-                return [warehouse for warehouse in warehouses]
+                return [warehouse.to_dict for warehouse in warehouses]
             # If a warehouse ID is provided, get the warehouse by ID
             elif "warehouse_id" in params:
                 warehouse_id = params["warehouse_id"]
