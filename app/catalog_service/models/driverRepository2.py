@@ -13,7 +13,7 @@ class DriverRepository:
 
     def create(self, data):
         try:
-            driver = Driver(data['name'], data['email'], data['phone'], data['address'], data['license_number'])
+            driver = Driver(data['name'], data['email'], data['phone'], data['address'], data['license_number'], data['car_model'])
             result = self.collection.insert_one(driver.to_dict())
             return str(result.inserted_id)
         except Exception as e:

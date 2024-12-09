@@ -61,6 +61,7 @@ class driverServer:
         if "drivers" in uri:
             data = cherrypy.request.json
             driver_id = params["driver_id"]
+            print(driver_id)
             result = self.driver_repo.update(driver_id, data)
             return result
         else:

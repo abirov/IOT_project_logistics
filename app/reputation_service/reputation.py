@@ -106,7 +106,7 @@ if __name__ == '__main__':
         }
     }
     cherrypy.tree.mount(reputation_service, '/', conf)
-    cherrypy.config.update({'server.socket_port': 9090})
+    cherrypy.config.update({'server.socket_port': 0})
     cherrypy.engine.start()
     cherrypy.engine.block()
 
