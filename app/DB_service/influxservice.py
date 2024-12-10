@@ -3,6 +3,7 @@ import cherrypy_cors
 import json
 from DBconnectore3 import influxdbmanager
 
+
 class influxconnectoreServer:
     exposed = True  # Required when using MethodDispatcher
 
