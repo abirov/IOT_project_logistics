@@ -1,10 +1,8 @@
 import influxdb_client
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
-import configparser
 import os
 import json
-import pandas as pd
 
 class influxdbmanager:
     def __init__(self, config_file):
