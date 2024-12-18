@@ -9,7 +9,7 @@ class Driver:
         self.phone = phone
         self.address = address
         self.license_number = license_number
-        self._id = _id
+        self._id = _id if _id else ObjectId()
         self.vehicle_id = vehicle_id
         self.car_model = car_model
 

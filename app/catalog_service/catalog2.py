@@ -140,28 +140,24 @@ class warehouseServer:
         
 #depolay server for package
 class packageServer:
-    def __init__(self,config_file='config.json'):
+    def __init__(self, config_file='config.json'):
         self.package_repo = PackageRepository(config_file=config_file)
 
     exposed = True
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
         if "packages" in uri:
-            # If no specific parameter is provided, list all packages
             if len(params) == 0:
                 packages = self.package_repo.list_all()
                 return [package.to_dict() for package in packages]
-            # If a package ID is provided, get the package by ID
             elif "package_id" in params:
                 package_id = params["package_id"]
                 package = self.package_repo.get_by_id(package_id)
                 return package.to_dict() if package else None
-            # If a warehouse ID is provided, get the package by warehouse ID
             elif "warehouse_id" in params:
                 warehouse_id = params["warehouse_id"]
-                package = self.package_repo.get_by_warehouse_id(warehouse_id)
-                return package.to_dict() if package else None
-            # If no driver is assigned, get all packages without a driver
+                packages = self.package_repo.get_by_warehouse_id(warehouse_id)
+                return [package.to_dict() for package in packages] if packages else None
             elif "no_driver" in params:
                 packages = self.package_repo.list_all_packages_without_driver()
                 return [package.to_dict() for package in packages]
@@ -169,6 +165,8 @@ class packageServer:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
         else:
             raise cherrypy.HTTPError(404, "Invalid URI")
+
+
     exposed = True        
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
@@ -272,7 +270,7 @@ class FeedbackServer:
         else:
             raise cherrypy.HTTPError(404, "Invalid URI")
         
-    
+     
 
 
         
