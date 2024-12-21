@@ -4,7 +4,11 @@ def run_services():
     services = [
         "app/catalog_service/catalog.py",
         "app/reputation_service/reputation.py",
+
         ##"app/simulation_service/simulation.py",
+=
+        #"app/simulation_service/simulation.py",
+
         "app/web_app/web.py",
         "telegram_bot/Bot.py",  
         
