@@ -1,16 +1,14 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
+from .util import load_config  # Import the utility function
 
 class LogisticsPoint:
-    def __init__(self, db=None):
-        # If db is passed, use it; otherwise, connect to MongoDB
-        if db:
-            self.collection = db['IOT/logistics_points']
-        else:
-            self.client = MongoClient('localhost', 27017)
-            self.db = self.client['IOT']
-            self.collection = self.db['logistics_points']
+    def __init__(self, config_file):
+        config = load_config('logisticpoint', config_file)  # Use the utility function to load the config
+        self.client = MongoClient(config['host'], config['port'])
+        self.db = self.client[config['db']]
+        self.collection = self.db[config['collection']]
 
     def create(self, data):
         try:
