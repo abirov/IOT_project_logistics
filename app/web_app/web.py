@@ -625,4 +625,4 @@ if __name__ == '__main__':
         }
     }
 
-    cherrypy.quickstart(WebApp(catalog_url), '/',config)#SETAREH
+    cherrypy.quickstart(WebApp(catalog_url), '/',config)

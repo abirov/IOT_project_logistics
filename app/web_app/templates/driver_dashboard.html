@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Dashboard</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <h1>Welcome, {{ driver.name }}</h1>
+    <p><strong>Email:</strong> {{ driver.email }}</p>
+    <p><strong>Phone:</strong> {{ driver.phone }}</p>
+    <p><strong>Address:</strong> {{ driver.address }}</p>
+    <p><strong>License Number:</strong> {{ driver.license_number }}</p>
+    <!-- Buttons for Edit and Delete Profile -->
+    <div style="margin-top: 20px;">
+        <!-- "Edit Profile"  page -->
+        <form action="/edit_profile" method="get" style="display:inline;">
+            <input type="hidden" name="driver_id" value="{{ driver._id }}">
+            <button type="submit">Edit Profile</button>
+        </form>
+
+        <!-- "Delete Profile" -->
+        <form action="/delete_profile" method="get" style="display:inline;">
+            <input type="hidden" name="driver_id" value="{{ driver._id }}">
+            <button type="submit" style="margin-left:10px;">Delete Profile</button>
+        </form>
+    </div>
+    <!-- Feedbacks Section -->
+    <h2>Feedbacks</h2>
+    {% if feedbacks %}
+        <ul>
+            {% for feedback in feedbacks %}
+                <li>
+                    <p><strong>Package ID:</strong> {{ feedback.package_id }}</p>
+                    <p><strong>Score:</strong> {{ feedback.score | round(2) }}</p>  <!-- Format score to 2 decimals -->
+                    <p><strong>Comments:</strong> {{ feedback.comment }}</p>
+                    <p><strong>Weight:</strong> {{ feedback.weight | round(2) }} kg</p>  <!-- Format weight to 2 decimals -->
+                    <p><strong>Warehouse ID:</strong> {{ feedback.warehouse_id }}</p>
+                   
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No feedbacks available.</p>
+    {% endif %}
+
+    <!-- Available Packages Section -->
+    <h2>Available Packages</h2>
+    {% if available_packages %}
+        <ul>
+            {% for package in available_packages %}
+            <li>
+                <p><strong>Package ID:</strong> {{ package._id }}</p>
+                <p><strong>Name:</strong> {{ package.name }}</p>
+                <p><strong>Warehouse ID:</strong> {{ package.warehouse_id }}</p>
+                <p><strong>Weight:</strong> {{ package.weight }} kg</p>
+                <p><strong>Dimensions:</strong> 
+                    {{ package.dimensions['length']|default('Unknown') }}x
+                    {{ package.dimensions['width']|default('Unknown') }}x
+                    {{ package.dimensions['height']|default('Unknown') }}
+                </p>
+                <p><strong>Delivery Address:</strong> {{ package.delivery_address }}</p>
+                <p><strong>Status:</strong> {{ package.status }}</p>
+
+                <!-- Form to SELECT the package -->
+            
+                <form action="/select_package" method="get">
+                    <!-- Pass the driver and package IDs  -->
+                    <input type="hidden" name="driver_id" value="{{ driver._id }}">
+                    <input type="hidden" name="package_id" value="{{ package._id }}">
+                    <button type="submit" style="float: left;">Select</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No packages available for selection.</p>
+    {% endif %}
+
+    <!-- Selected Packages Section -->
+    <h2>Selected Packages</h2>
+    {% if selected_packages %}
+        <ul>
+            {% for package in selected_packages %}
+            <li>
+                <p><strong>Package ID:</strong> {{ package._id }}</p>
+                <p><strong>Name:</strong> {{ package.name }}</p>
+                <p><strong>Warehouse ID:</strong> {{ package.warehouse_id }}</p>
+                <p><strong>Weight:</strong> {{ package.weight }} kg</p>
+                <p><strong>Dimensions:</strong> 
+                    {{ package.dimensions['length']|default('Unknown') }}x
+                    {{ package.dimensions['width']|default('Unknown') }}x
+                    {{ package.dimensions['height']|default('Unknown') }}
+                </p>
+                <p><strong>Delivery Address:</strong> {{ package.delivery_address }}</p>
+                <p><strong>Status:</strong> {{ package.status }}</p>
+
+                <!-- Form to mark the package as delivered -->
+                <form action="/mark_delivered" method="get">
+                    <input type="hidden" name="driver_id" value="{{ driver._id }}">
+                    <input type="hidden" name="package_id" value="{{ package._id }}">
+                    <button type="submit">Delivered</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No selected packages yet.</p>
+    {% endif %}
+</body>
+</html>
