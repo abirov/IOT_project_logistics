@@ -3,10 +3,10 @@ from jinja2 import Environment, FileSystemLoader
 import requests
 import os
 
+
 class WebApp:
-    def init(self, catalog_url):
-        # Use an absolute path to the templates directory
-        template_dir = os.path.join(os.path.dirname(file), 'templates')
+    def __init__(self, catalog_url):
+        template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         self.env = Environment(loader=FileSystemLoader(template_dir))
         self.catalog_url = catalog_url
 
@@ -19,41 +19,36 @@ class WebApp:
             return template.render(vehicles=vehicles, logistics_points=logistics_points)
         except Exception as e:
             cherrypy.log(f"Error rendering index.html: {e}", traceback=True)
-            return "Internal Server Error"
+            raise cherrypy.HTTPError(500, "Internal Server Error")
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    @cherrypy.tools.json_in()  # Added to parse incoming JSON
+    @cherrypy.tools.json_in()
     def submit_feedback(self):
         try:
-            # Log the incoming request data
             input_data = cherrypy.request.json
-            driver_id = input_data.get('driver_id')
-            warehouse_id = input_data.get('warehouse_id')
-            score = input_data.get('score')
-            comments = input_data.get('comments')
+            required_fields = ['score']
+            for field in required_fields:
+                if not input_data.get(field):
+                    raise ValueError(f"{field} is required.")
 
-            cherrypy.log(f"Received feedback data: driver_id={driver_id}, warehouse_id={warehouse_id}, score={score}, comments={comments}")
-
-            if score is None:
-                raise ValueError("Score is required and must be a valid number.")
-
-            cherrypy.log("Converting score to float")
-            score = float(score)  # This will raise an error if 'score' is None or invalid
-
+            score = float(input_data['score'])
             feedback_data = {
-                'driver_id': driver_id,
-                'warehouse_id': warehouse_id,
+                'driver_id': input_data.get('driver_id'),
+                'warehouse_id': input_data.get('warehouse_id'),
                 'score': score,
-                'comments': comments
+                'comments': input_data.get('comments')
             }
 
-            cherrypy.log(f"Sending feedback data to catalog service: {feedback_data}")
             response = requests.post(f"{self.catalog_url}/feedback", json=feedback_data)
-            response.raise_for_status()  # This will raise an error for 4xx/5xx responses
-            return response.json()
+            response.raise_for_status()
+            return {'status': 'success', 'message': 'Feedback submitted successfully'}
+        except ValueError as ve:
+            cherrypy.response.status = 400
+            return {'status': 'error', 'message': str(ve)}
         except Exception as e:
             cherrypy.log(f"Error submitting feedback: {e}", traceback=True)
+            cherrypy.response.status = 500
             return {'status': 'error', 'message': 'Failed to submit feedback'}
 
     def _get_vehicles(self):
@@ -63,7 +58,7 @@ class WebApp:
             return response.json()
         except Exception as e:
             cherrypy.log(f"Error fetching vehicles: {e}", traceback=True)
-            return []
+            return [{'id': 'error', 'name': 'Error fetching vehicles'}]
 
     def _get_logistics_points(self):
         try:
@@ -72,10 +67,15 @@ class WebApp:
             return response.json()
         except Exception as e:
             cherrypy.log(f"Error fetching logistics points: {e}", traceback=True)
-            return []
+            return [{'id': 'error', 'name': 'Error fetching logistics points'}]
 
+<<<<<<< HEAD
 if __name__ == 'main':
     catalog_url = 'http://localhost:8080'  # Change to localhost if running locally
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
-    
+=======
 
+if __name__ == '__main__':
+    catalog_url = os.getenv('CATALOG_URL', 'http://localhost:8080')
+>>>>>>> origin/main
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
+    cherrypy.quickstart(WebApp(catalog_url), '/')
