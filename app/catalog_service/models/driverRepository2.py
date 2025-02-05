@@ -1,7 +1,6 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-<<<<<<< HEAD
 from .util import load_config  # Import the utility function 
 from .modelDRIVER import Driver
 
@@ -16,22 +15,6 @@ class DriverRepository:
         try:
             driver = Driver(data['name'], data['email'], data['phone'], data['address'], data['license_number'], data['car_model'])
             result = self.collection.insert_one(driver.to_dict())
-=======
-from .util import load_config  # Import the utility function
-
-class Driver:
-    def __init__(self, config_file):
-        config = load_config('driver', config_file)  # Use the utility function to load the config
-        self.client = MongoClient(config['host'], config['port'])
-        self.db = self.client[config['db']]
-        self.collection = self.db[config['collection']]
-
-
-    def create(self, data):
-        try:
-            # drvir = Driver(data['name'], data['email'], data['phone'], data['rating'], data['total_ratings'], data['total_rides'], data['created_at'], data['updated_at'])
-            result = self.collection.insert_one(data)
->>>>>>> origin/MHOSS1
             return str(result.inserted_id)
         except Exception as e:
             raise Exception(f"Error inserting document: {str(e)}")
@@ -98,38 +81,5 @@ class Driver:
             else:
                 return None
         except Exception as e:
-<<<<<<< HEAD
             raise Exception(f"Error retrieving driver by package ID: {str(e)}")
         
-=======
-            raise Exception(f"Error updating reputation: {str(e)}")
-
-    @staticmethod
-    def json_encoder(data):
-        if isinstance(data, list):
-            for doc in data:
-                doc['_id'] = str(doc['_id'])
-        elif data and '_id' in data:
-            data['_id'] = str(data['_id'])
-        return data
-
-
-
-
-    def get_by_package_id(self, package_id):
-        return self.db.driver.aggregate([
-            {
-                '$lookup': {
-                    'from': 'package',
-                    'localField': '_id',
-                    'foreignField': 'driver_id',
-                    'as': 'packages'
-                }
-            },
-            {
-                '$match': {
-                    'packages.package_id': package_id  # Match inside the joined 'packages' array
-                }
-            }
-        ])
->>>>>>> origin/MHOSS1

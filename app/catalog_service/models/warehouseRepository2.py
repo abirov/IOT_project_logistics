@@ -2,17 +2,10 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
 from .util import load_config  # Import the utility function
-<<<<<<< HEAD
 from .modelWAREHOUSE import Warehouse
-=======
->>>>>>> origin/MHOSS1
 
 class WarehouseRepository:
 
-<<<<<<< HEAD
-=======
-class Warehouse:
->>>>>>> origin/MHOSS1
     def __init__(self, config_file):
         config = load_config('warehouse', config_file)  # Use the utility function to load the config
         self.client = MongoClient(config['host'], config['port'])
