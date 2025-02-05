@@ -4,7 +4,7 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
 
-# Configure logging
+# Configure logging for debugging
 logging.basicConfig(level=logging.DEBUG)
 
 class RESTBot:
@@ -14,7 +14,7 @@ class RESTBot:
         self.bot = telepot.Bot(self.tokenBot)
         self.chatIDs = {}
 
-        
+        # Start MessageLoop to handle incoming messages
         MessageLoop(self.bot, {'chat': self.on_chat_message, 'callback_query': self.on_callback_query}).run_as_thread()
         logging.info("🤖 Bot is running. Waiting for messages...")
 
@@ -23,13 +23,13 @@ class RESTBot:
         content_type, chat_type, chat_id = telepot.glance(msg)
         message = msg.get('text', '')
 
-        print(f"🔹 Message received: {message} from {chat_id}")  
+        print(f"🔹 Message received: {message} from {chat_id}")  # Debugging log
 
         if chat_id not in self.chatIDs:
             self.chatIDs[chat_id] = {"state": None, "driver_id": None}
 
         if message == "/start":
-            print("✅ Start command received!")  
+            print("✅ Start command received!")  # Check if bot detects it
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🚗 Driver", callback_data='enter_as_driver')],
                 [InlineKeyboardButton(text="🏢 Warehouse User", callback_data='enter_as_warehouse')]
@@ -39,10 +39,6 @@ class RESTBot:
         elif self.chatIDs[chat_id]["state"] == "awaiting_driver_id":
             print(f"📡 Fetching driver details for ID: {message}")
             self.fetch_driver_details(chat_id, message)
-
-        elif self.chatIDs[chat_id]["state"] == "awaiting_warehouse_id":
-            self.fetch_warehouse_details(chat_id, message)
-
 
         else:
             print("⚠️ Unsupported command received.")
@@ -79,19 +75,6 @@ class RESTBot:
         elif query_data.startswith("confirm_delivery_"):
             package_id = query_data.replace("confirm_delivery_", "")
             self.confirm_package_delivery(from_id, package_id)
-        
-        elif query_data.startswith("reassign_order_"):  
-            package_id = query_data.split("_")[-1]
-            self.cancel_package_assignment(from_id, package_id)
-        
-        
-        elif query_data == 'enter_as_warehouse':
-            self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
-            self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
-
-        elif query_data == "view_warehouse_details":
-            self.send_warehouse_details(from_id)
-
 
 
         self.bot.answerCallbackQuery(query_id, text="")
@@ -209,61 +192,48 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages.")
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
-        """Assign the selected package to the driver and provide options to change status or cancel."""
+        """Assign the selected package to the driver."""
+    
+        ###if not driver_id:
+        ###self.bot.sendMessage(chat_id, text="⚠️ No driver ID found. Please log in again using /start.")
+        ##return
+
         url = f"{self.catalog_url}/packages/assign_driver?package_id={package_id}&driver_id={driver_id}"
 
+
+        logging.debug(f"🔄 Sending PUT request to: {url}")  # Debugging log
+
         try:
-            data = {"driver_id": driver_id}
+            data = {"driver_id": driver_id}  # Only send driver_id in the request
             response = requests.put(url, json=data, timeout=5)
-            if response.status_code == 200:
-                self.bot.sendMessage(chat_id, text="✅ Package successfully assigned to you! 🚚\nYou can now go to the warehouse to pick it up!")
 
-                package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
 
-                try:
-                    package_response = requests.get(package_details_url, timeout=5)
+            logging.debug(f"📡 API Response Status: {response.status_code}")
+            logging.debug(f"📡 API Response Content: {response.text}")  # Print API response
+ 
+            # Verify the update in MongoDB
+            package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+            package_response = requests.get(package_details_url, timeout=5)
 
-                    if package_response.status_code == 200:
-                        package = package_response.json()
+            if package_response.status_code == 200:
+                package = package_response.json()
+                if package.get("driver_id") == driver_id:
+                    self.bot.sendMessage(chat_id, text="✅ Package successfully assigned to you! 🚚\nYou can now go to the warehouse to pick it up!")
 
-                        # package details
-                        package_info = (
-                            f"📦 *Package Details:*\n"
-                            f"🆔 *ID:* {package['_id']}\n"
-                            f"📦 *Name:* {package.get('name', 'N/A')}\n"
-                            f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
-                            f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
-                            f"{package.get('dimensions', {}).get('width', 'N/A')} x "
-                            f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
-                            f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
-                            f"{package.get('delivery_address', {}).get('city', 'N/A')} "
-                            f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
-                            
-                        )
+                    # Add status changing button
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="🔄 Status Changing", callback_data=f"change_status_{package_id}")]
+                    ])
+                    self.bot.sendMessage(chat_id, text="📦 After loading please press this button to change status:", reply_markup=keyboard)
 
-                    
-                        self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown")
+                else:
+                    self.bot.sendMessage(chat_id, text="⚠️ Package assignment failed in MongoDB. Please try again.")
+                    return  # Stop further execution if assignment failed
+            
 
-                    else:
-                        self.bot.sendMessage(chat_id, text="⚠️ Could not fetch package details. Please try again.")
-
-                except Exception as e:
-                    logging.error(f"❌ Error fetching package details: {str(e)}")
-                    self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving package details.")
-
-                       
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔄 Status Changing", callback_data=f"change_status_{package_id}")],
-                    [InlineKeyboardButton(text="🚫 Reassigning Order", callback_data=f"reassign_order_{package_id}")]
-                ])
-                self.bot.sendMessage(chat_id, text="You can change the status after loading or cancel the order by pressing this option:", reply_markup=keyboard)
-
-            else:
-                 self.bot.sendMessage(chat_id, text="⚠️ Failed to assign package.")
         except Exception as e:
             logging.error(f"❌ Error assigning package: {str(e)}")
-            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while assigning the package.")
-
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while assigning package.") 
     
     
     def change_package_status(self, chat_id, package_id):
@@ -276,11 +246,9 @@ class RESTBot:
             response = requests.put(url, json=new_status, timeout=5)
 
             if response.status_code in [200, 201]:
-                
-                 self.chatIDs[chat_id]["package_status"] = "in transit"
                  self.bot.sendMessage(chat_id, text="✅ Package status updated to 'in transit'! 🚚")
 
-                 
+                 # Add confirm delivery button
                  keyboard = InlineKeyboardMarkup(inline_keyboard=[
                      [InlineKeyboardButton(text="✅ Confirm Delivery", callback_data=f"confirm_delivery_{package_id}")]
                  ])
@@ -304,132 +272,15 @@ class RESTBot:
             response = requests.put(url, json=new_status, timeout=5)
 
             if response.status_code in [200, 201]:
-                self.bot.sendMessage(chat_id, text="✅  Package successfully delivered! 🎉")
-                self.send_driver_menu(chat_id)  # Redirect to driver-specific menu
+                 self.bot.sendMessage(chat_id, text="✅  Package successfully delivered! 🎉")
 
 
             else:
-                self.bot.sendMessage(chat_id, text="⚠️ Failed to confirm delivery. Please try again.")
+                 self.bot.sendMessage(chat_id, text="⚠️ Failed to confirm delivery. Please try again.")
 
         except Exception as e:
             logging.error(f"❌ Error confirming package delivery: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while confirming delivery.")
-
-
-    def cancel_package_assignment(self, chat_id, package_id):
-        """Set the driver_id to None in the package document in MongoDB."""
-
-        # Check if package is already in transit
-        if self.chatIDs[chat_id].get("package_status") == "in transit":
-           self.bot.sendMessage(chat_id, text="⚠️ The package is already 'in transit' and cannot be reassigned.")
-       
-           return  
-        
-        url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
-        data = {"driver_id": None}  # Set driver_id to None
-
-        try:
-            response = requests.put(url, json=data, timeout=5)
-
-            if response.status_code in [200, 204]:  # Assuming 200 OK or 204 No Content as successful
-             self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
-             self.send_driver_menu(chat_id)  # Redirect to driver-specific menu
-
-            else:
-             self.bot.sendMessage(chat_id, text="⚠️ Failed to cancel the order. Please try again.")
-
-        except Exception as e:
-           logging.error(f"❌ Error cancelling order: {str(e)}")
-           self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while cancelling the order.")
-
-    
-    def send_start_menu(self, chat_id):
-        """Send the start menu to the user."""
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🚗 Driver", callback_data='enter_as_driver')],
-            [InlineKeyboardButton(text="🏢 Warehouse User", callback_data='enter_as_warehouse')]
-        ])
-        self.bot.sendMessage(chat_id, text="Welcome to the Logistics Bot. Please choose your role:", reply_markup=keyboard)
-
-    def send_driver_menu(self, chat_id):
-        """Send the driver-specific menu."""
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-             [InlineKeyboardButton(text="📋 View My Details", callback_data="view_driver_details")],
-             [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")]
-        ])
-        self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
-
-    def fetch_warehouse_details(self, chat_id, warehouse_id):
-        """Fetch warehouse details from the catalog API."""
-        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
-  
-        try:
-            response = requests.get(url, timeout=5)
-
-            if response.status_code == 200:
-                warehouse = response.json()
-
-                if warehouse:
-                   self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
-
-                   # Send welcome message
-                   welcome_message = f"🏢 Welcome to *{warehouse['name']}*!\n"
-                   self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
-
-                   # Show options
-                   keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                       [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
-                       [InlineKeyboardButton(text="📦 Tracking", callback_data="tracking")]
-                    ])
-                   self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
-
-                else:
-                    self.bot.sendMessage(chat_id, text="⚠️ No warehouse found with that ID.")
-
-            else:
-                self.bot.sendMessage(chat_id, text="❌ Failed to fetch warehouse details.")
-
-        except Exception as e:
-            logging.error(f"❌ Error fetching warehouse details: {str(e)}")
-            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred.")
-
-    def send_warehouse_details(self, chat_id):
-        """Fetch and display warehouse details."""
-        warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
-
-        if not warehouse_id:
-            self.bot.sendMessage(chat_id, text="⚠️ No warehouse ID found. Please log in again using /start.")
-            return
-
-        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
-
-        try:
-            response = requests.get(url, timeout=5)
-
-            if response.status_code == 200:
-                warehouse = response.json()
-
-                if warehouse:
-                        details = (
-                           f"🏢 *Warehouse Details*\n"
-                           f"🆔 ID: {warehouse['_id']}\n"
-                           f"🏠 Name: {warehouse['name']}\n"
-                           f"📍 Address: {warehouse['address']['street']}, {warehouse['address']['city']}, "
-                           f"{warehouse['address']['state']} ({warehouse['address']['zip']})\n"
-                           f"📞 Phone: {warehouse['phone']}\n"
-                           f"📧 Email: {warehouse['email']}\n"
-                        )
-                        self.bot.sendMessage(chat_id, text=details, parse_mode="Markdown")
-                else:
-                        self.bot.sendMessage(chat_id, text="⚠️ No details found for this warehouse.")
-  
-            else:
-                 self.bot.sendMessage(chat_id, text="❌ Failed to retrieve warehouse details.")
-
-        except Exception as e:
-             logging.error(f"❌ Error retrieving warehouse details: {str(e)}")
-             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving warehouse details.")
-
 
 
 
