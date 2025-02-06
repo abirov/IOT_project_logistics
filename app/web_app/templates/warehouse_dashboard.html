@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warehouse Dashboard</title>
+</head>
+<body>
+    <h1>Warehouse Dashboard</h1>
+
+    <!-- Warehouse Details -->
+    <div>
+        <h2>Details</h2>
+        <p>Name: {{ name }}</p>
+        <p>Address: {{ address.street }}, {{ address.city }}, {{ address.state }}, {{ address.zip }}</p>
+        <p>Phone: {{ phone }}</p>
+        <p>Email: {{ email }}</p>
+        <p>Reputation: Score {{ reputation.score }}, Reviews {{ reputation.reviews }}</p>
+        <div style="margin-top: 20px;">
+            <!-- Edit Profile -->
+            <form action="/edit_warehouse" method="get" style="display:inline;">
+                <input type="hidden" name="warehouse_id" value="{{ warehouse_id }}">
+                <button type="submit">Edit Profile</button>
+            </form>
+    
+            <!-- Delete Profile -->
+            <form action="/delete_warehouse" method="get" style="display:inline;">
+                <input type="hidden" name="warehouse_id" value="{{ warehouse_id }}">
+                <button type="submit" style="margin-left:10px;">Delete Profile</button>
+            </form>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Package Registration -->
+   
+    <div>
+        <h2>Register a Package</h2>
+        <form action="/register_package" method="post">
+            <input type="hidden" name="warehouse_id" value="{{ warehouse_id }}">
+    
+            <label for="package_name">Package Name:</label>
+            <input type="text" id="package_name" name="package_name" required>
+    
+            <label for="source">Source:</label>
+            <input type="text" id="source" name="source" required>
+    
+            <label for="destination">Destination:</label>
+            <input type="text" id="destination" name="destination" required>
+    
+            <label for="weight">Weight (kg):</label>
+            <input type="number" id="weight" name="weight" step="0.01" required>
+    
+            <label for="price">Price ($):</label>
+            <input type="number" id="price" name="price" step="0.01" required>
+    
+            <label for="dimensions">Dimensions (LxWxH):</label>
+            <input type="text" id="dimensions" name="dimensions" placeholder="e.g., 10x20x30" required>
+    
+            <label for="delivery_address">Delivery Address:</label>
+            <textarea id="delivery_address" name="delivery_address" placeholder="Enter the delivery address here..." required></textarea>
+    
+            <button type="submit">Register Package</button>
+        </form>
+    </div>
+    <hr>
+
+        <!-- Feedback Submission -->
+    <div>
+        <h2>Submit Feedback for a Driver</h2>
+        <form action="/register_feedback" method="post">
+            <!-- Package ID -->
+            <label for="package_id">Package ID:</label>
+            <input type="text" id="package_id" name="package_id" required>
+
+            <!-- Driver ID -->
+            <label for="driver_id">Driver ID:</label>
+            <input type="text" id="driver_id" name="driver_id" required>
+
+            <!-- Score -->
+            <label for="score">Score (1-5):</label>
+            <input type="number" id="score" name="score" min="1" max="5" required>
+
+            <!-- Comment -->
+            <label for="comment">Comment:</label>
+            <textarea id="comment" name="comment" placeholder="Provide your feedback here..." required></textarea>
+
+            <!-- Weight -->
+            <label for="weight">Weight (kg):</label>
+            <input type="number" id="weight" name="weight" min="0" step="0.1" required>
+
+            <!-- Hidden Warehouse ID -->
+            <input type="hidden" id="warehouse_id" name="warehouse_id" value="{{ warehouse_id }}">
+
+            <!-- Submit Button -->
+            <button type="submit">Submit Feedback</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <!-- Package History -->
+    <!-- Package History -->
+    <div>
+        <h2>Package History</h2>
+        {% if packages %}
+        <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>package name</th>
+                    <th>Delivery Address</th>
+                    <th>Driver ID</th>
+                    <th>weight</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for package in packages %}
+                <tr>
+                    <td>{{ package._id }}</td>
+                    <td>{{ package.name}}</td>
+                    <td>{{ package.delivery_address }}</td>
+                    <td>{{ package.driver_id }}</td>
+                    <td>{{ package.weight }}</td>
+                    <td>{{ package.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No packages available.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
