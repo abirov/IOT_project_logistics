@@ -257,7 +257,7 @@ class WebApp:
     @cherrypy.expose
     def submit_edit_profile(self, driver_id, name, email, phone, address, license_number):
         """
-        Submits the edited driver profile via PUT method to update the driver details.
+         PUT method to update the driver details.
         """
         try:
             data = {
@@ -284,9 +284,7 @@ class WebApp:
 
     @cherrypy.expose
     def delete_profile(self, driver_id):
-        """
-        Deletes the driver's profile (and any associated data if your catalog implements that).
-        """
+        
         try:
             
             url = f"http://127.0.0.1:8080/drivers/drivers?driver_id={driver_id}"
@@ -422,7 +420,7 @@ class WebApp:
     @cherrypy.expose
     def edit_warehouse(self, warehouse_id):
         """
-        Fetches the current warehouse data and displays a form to edit it.
+         displays a form to edit 
         """
         try:
             # current warehouse data from catalog
@@ -460,7 +458,7 @@ class WebApp:
     @cherrypy.expose
     def submit_edit_warehouse(self, warehouse_id, name, street, city, state, zip, phone, email):
         """
-        Submits the edited warehouse profile via PUT method to update the warehouse details in the catalog.
+         PUT method to update the warehouse details 
         """
         try:
             # updated warehouse data
@@ -497,7 +495,7 @@ class WebApp:
     @cherrypy.expose
     def delete_warehouse(self, warehouse_id):
         """
-        Deletes the warehouse profile from the catalog, along with any associated data if so implemented.
+        Deletes the warehouse profile
         """
         try:
             
