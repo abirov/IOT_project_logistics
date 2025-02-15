@@ -213,8 +213,21 @@ class RESTBot:
         url = f"{self.catalog_url}/packages/assign_driver?package_id={package_id}&driver_id={driver_id}"
 
         try:
+            # Check if package is already assigned
+            package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+            package_response = requests.get(package_details_url, timeout=5)
+ 
+            if package_response.status_code == 200:
+                package = package_response.json()
+        
+                if package.get("driver_id"):  # If driver_id is not None
+                    self.bot.sendMessage(chat_id, text="❌ This package has already been assigned to another driver. Please select another package from the list")
+                    return  # Stop further execution
+
+            # If package is not assigned, proceed with assignment
             data = {"driver_id": driver_id}
             response = requests.put(url, json=data, timeout=5)
+
             if response.status_code == 200:
                 self.bot.sendMessage(chat_id, text="✅ Package successfully assigned to you! 🚚\nYou can now go to the warehouse to pick it up!")
 
