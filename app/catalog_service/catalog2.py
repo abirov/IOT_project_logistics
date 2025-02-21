@@ -234,6 +234,10 @@ class FeedbackServer:
                 warehouse_id = params["warehouse_id"]
                 feedback = self.feedback_repo.get_by_warehouse_id(warehouse_id)
                 return feedback.to_dict() if feedback else None
+            elif "package_id" in params:
+                package_id = params["package_id"]
+                feedback = self.feedback_repo.get_by_package_id(package_id)
+                return feedback.to_dict() if feedback else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
         else:

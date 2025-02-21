@@ -23,11 +23,37 @@ class PackageRepository:
     def get_by_id(self, package_id):
         try:
             package = self.collection.find_one({'_id': (package_id)})
+            pipline = 
             return Package.from_dict(package) if package else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")
         except Exception as e:
             raise Exception(f"Error retrieving package by ID: {str(e)}")
+        
+    def get_by_id_with_warehouse_address(self, package_id):
+        try:
+            pipeline = [
+                {"$match": {"_id": ObjectId(package_id)}},
+                {"$lookup": {
+                    "from": "warehouses",
+                    "localField": "warehouse_id",
+                    "foreignField": "_id",
+                    "as": "warehouse_info"
+                }},
+                {"$unwind": "$warehouse_info"},
+                {"$project": {
+                    "name": 1,
+                    "weight": 1,
+                    "dimensions": 1,
+                    "status": 1,
+                    "delivery_address": 1,
+                    "warehouse_info.address": 1
+                }}
+            ]
+            result = list(self.collection.aggregate(pipeline))
+            return result[0] if result else None
+        except Exception as e:
+            raise Exception(f"Error retrieving package with warehouse address: {str(e)}")
         
     def get_by_warehouse_id(self, warehouse_id):
         try:
