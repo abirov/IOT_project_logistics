@@ -5,7 +5,6 @@ from .util import load_config  # Import the utility function
 from .modelWAREHOUSE import Warehouse
 
 class WarehouseRepository:
-
     def __init__(self, config_file):
         config = load_config('warehouse', config_file)  # Use the utility function to load the config
         self.client = MongoClient(config['host'], config['port'])
@@ -19,47 +18,44 @@ class WarehouseRepository:
             return str(result.inserted_id)
         except Exception as e:
             raise Exception(f"Error inserting warehouse: {str(e)}")
-        
+
     def get_by_id(self, warehouse_id):
         try:
-            warehouse = self.collection.find_one({'_id':(warehouse_id)})
+            warehouse = self.collection.find_one({'_id': ObjectId(warehouse_id)})  # ✅ Fixed ObjectId conversion
             return Warehouse.from_dict(warehouse) if warehouse else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
         except Exception as e:
             raise Exception(f"Error retrieving warehouse by ID: {str(e)}")
-        
+
     def get_by_name(self, warehouse_name):
         try:
             warehouse = self.collection.find_one({'name': warehouse_name})
             return Warehouse.from_dict(warehouse) if warehouse else None
         except Exception as e:
             raise Exception(f"Error retrieving warehouse by name: {str(e)}")
-        
 
     def update(self, warehouse_id, data):
         try:
-            result = self.collection.update_one({'_id':(warehouse_id)}, {'$set': data})
+            result = self.collection.update_one({'_id': ObjectId(warehouse_id)}, {'$set': data})  # ✅ Fixed ObjectId
             return {"matched_count": result.matched_count, "modified_count": result.modified_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
         except Exception as e:
             raise Exception(f"Error updating warehouse: {str(e)}")
-    
+
     def delete(self, warehouse_id):
         try:
-            result = self.collection.delete_one({'_id': (warehouse_id)})
+            result = self.collection.delete_one({'_id': ObjectId(warehouse_id)})  # ✅ Fixed ObjectId
             return {"deleted_count": result.deleted_count}
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
         except Exception as e:
             raise Exception(f"Error deleting warehouse: {str(e)}")
-        
+
     def list_all(self):
         try:
             warehouses = list(self.collection.find())
             return [Warehouse.from_dict(warehouse) for warehouse in warehouses]
         except Exception as e:
             raise Exception(f"Error listing warehouses: {str(e)}")
-        
-    

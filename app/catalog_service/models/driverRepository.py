@@ -1,8 +1,14 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import MongoClient
-from .util import load_config  # Import the utility function 
-from .modelDRIVER import Driver
+try:
+    from models.util import load_config
+    from models.modelDRIVER import Driver
+except Exception as e:
+    print("Running from local")
+    from app.catalog_service.models.util import load_config
+    from app.catalog_service.models.modelDRIVER import Driver
+
 
 class DriverRepository:
     def __init__(self, config_file):
