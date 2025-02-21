@@ -2,7 +2,7 @@ from bson import ObjectId
 from datetime import datetime
 
 class Feedback:
-    def __init__(self, package_id: str, score: int, comment: str, weight: int, _id: ObjectId = ObjectId(), warehouse_id: ObjectId = None, driver_id: ObjectId = None, timestamp: datetime = datetime.now()):
+    def __init__(self, package_id: str, score: int, comment: str, weight: None, _id: ObjectId = ObjectId(), warehouse_id: ObjectId = None, driver_id: ObjectId = None, timestamp: datetime = datetime.now()):
         self.package_id = package_id
         self.score = score
         self.comment = comment
@@ -10,7 +10,7 @@ class Feedback:
         self.warehouse_id = warehouse_id
         self.driver_id = driver_id
         self.timestamp = timestamp
-        self.weight = weight
+        self.weight = weight if weight else None
 
     def __str__(self):
         return f"Feedback(package_id={self.package_id}, score={self.score}, comment={self.comment}, weight={self.weight}, _id={self._id}, warehouse_id={self.warehouse_id}, driver_id={self.driver_id}, timestamp={self.timestamp})"
