@@ -243,7 +243,7 @@ class VehicleServer:
                 if 'vehicle_id' in params:
                     return [d.to_dict() for d in self.service.get_vehicle_by_id(params['vehicle_id']).to_dict()]
                 elif 'list_all' in params:
-                    return self.service.list_all_drivers().to_dict()
+                    return self.service.list_all_vehicles().to_dict()
                 else:
                     raise cherrypy.HTTPError(400, "Invalid GET request")
 
@@ -292,7 +292,7 @@ class FeedbackServer:
             if 'feedback_id' in params:
                 return [d.to_dict() for d in self.service.get_feedback_by_id(params['feedback_id']).to_dict()]
             elif 'by_rating' in params:
-                [d.to_dict() for d in self.service.get_by_rating(params['f_id']).to_dict()]
+                return [d.to_dict() for d in self.service.get_by_rating(params['f_id']).to_dict()]
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
 
@@ -336,10 +336,10 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
         }
     }
-    cherrypy.tree.mount(DriverServer(), '/drivers', conf)
+    cherrypy.tree.mount(DriverServer(), '/driver', conf)
     cherrypy.tree.mount(WarehouseServer(), '/warehouse', conf)
     cherrypy.tree.mount(VehicleServer(), '/vehicle', conf)
     cherrypy.tree.mount(FeedbackServer(), '/feedback', conf)
-    cherrypy.config.update({'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_port': 8081})
     cherrypy.engine.start()
     cherrypy.engine.block()
