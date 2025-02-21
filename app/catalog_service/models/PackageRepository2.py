@@ -23,7 +23,6 @@ class PackageRepository:
     def get_by_id(self, package_id):
         try:
             package = self.collection.find_one({'_id': (package_id)})
-            pipline = 
             return Package.from_dict(package) if package else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {package_id}")

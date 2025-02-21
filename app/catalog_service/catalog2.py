@@ -165,6 +165,11 @@ class packageServer:
             elif "no_driver" in params:
                 packages = self.package_repo.list_all_packages_without_driver()
                 return [package.to_dict() for package in packages]
+            # get address of warehouse by package id
+            elif "warehouse_address" in params:
+                package_id = params["package_id"]
+                package = self.package_repo.get_warehouse_address(package_id)
+                return package.to_dict() if package else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
         else:
