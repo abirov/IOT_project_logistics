@@ -10,7 +10,7 @@ def run_services():
         ##"app/simulation_service/simulation.py",
         ##"app/simulation_service/simulation.py",
 
-        #"app/web_app/web.py",
+        "app/web_app/web.py",
           
         
     ]

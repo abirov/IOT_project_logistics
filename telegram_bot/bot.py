@@ -120,22 +120,26 @@ class RESTBot:
             package_id = query_data.replace("confirm_delivery_", "")
             self.confirm_package_delivery(from_id, package_id)
         
-        elif query_data.startswith("reassign_order_"):  
-            package_id = query_data.split("_")[-1]
-    
+        elif query_data.startswith("reassign_order_"):
+            data = query_data.split("_")
+            package_id = data[2]
+            package_name = '_'.join(data[3:])  # Since package names might contain underscores, join the rest
+
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Yes, Reassign", callback_data=f"confirm_reassign_{package_id}")],
                 [InlineKeyboardButton(text="❌ No, Cancel", callback_data="cancel_action")]
             ])
-    
-            self.bot.sendMessage(from_id, text="⚠️ Are you sure you want to reassign this order?", reply_markup=keyboard)
 
-        elif query_data.startswith("confirm_reassign_"):  
-           package_id = query_data.split("_")[-1]
-           self.cancel_package_assignment(from_id, package_id)  # Proceed with reassignment
+            # Send a confirmation message including the package name
+            self.bot.sendMessage(from_id, text=f"⚠️ Are you sure you want to reassign the package '{package_name}'?", reply_markup=keyboard)
+
+        elif query_data.startswith("confirm_reassign_"):
+            package_id = query_data.split("_")[2]
+            self.cancel_package_assignment(from_id, package_id)  
 
         elif query_data == "cancel_action":
             self.bot.sendMessage(from_id, text="❌ Action canceled.")
+
 
 
         elif query_data == 'enter_as_warehouse':
@@ -260,11 +264,11 @@ class RESTBot:
 
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
-            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages.")
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
-        url = f"{self.catalog_url}/packages/assign_driver?package_id={package_id}&driver_id={driver_id}"
+        url = f"{self.catalog_url}/packages/packages?package_id={package_id}&driver_id={driver_id}"
 
         try:
             # Check if package is already assigned
@@ -432,15 +436,14 @@ class RESTBot:
 
 
     def driver_panel(self, chat_id, driver_id):
-        """Fetch and display all packages assigned to the driver."""
-    
+        """Fetch and display all packages assigned to the driver, filtering out delivered packages."""
         url = f"{self.catalog_url}/packages/packages?driver_id={driver_id}"
 
         try:
             response = requests.get(url, timeout=5)
             logging.debug(f"📡 API Response Status: {response.status_code}")
-            logging.debug(f"📦 API Response Content: {response.text}")  # ✅ Print the API response
-          
+            logging.debug(f"📦 API Response Content: {response.text}")  # Log the full API response
+
             if response.status_code == 200:
                 packages = response.json()
 
@@ -449,34 +452,36 @@ class RESTBot:
                     return
 
                 for package in packages:
-                    package_info = (
-                        f"📦 *Package Details:*\n"
-                        f"🆔 *ID:* {package['_id']}\n"
-                        f"📦 *Name:* {package.get('name', 'N/A')}\n"
-                        f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
-                        f"🏢 *Warehouse:* {package.get('warehouse_id', 'N/A')}\n"
-                        f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
-                        f"{package.get('delivery_address', {}).get('city', 'N/A')} "
-                        f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
-                        f"🚦 *Status:* {package.get('status', 'N/A')}"
-                    )
+                    if package.get('status') != 'delivered':
+                        package_info = (
+                            f"📦 *Package Details:*\n"
+                            f"🆔 *ID:* {package['_id']}\n"
+                            f"📦 *Name:* {package.get('name', 'N/A')}\n"
+                            f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
+                            f"🏢 *Warehouse:* {package.get('warehouse_id', 'N/A')}\n"
+                            f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
+                            f"{package.get('delivery_address', {}).get('city', 'N/A')} "
+                            f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
+                            f"🚦 *Status:* {package.get('status', 'N/A')}"
+                        )
 
-                # Create buttons for managing the package
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="📦 Change Status", callback_data=f"change_status_{package['_id']}")],
-                    [InlineKeyboardButton(text="✅ Confirm Delivery", callback_data=f"confirm_delivery_{package['_id']}")],
-                    [InlineKeyboardButton(text="🚫 Reassign Order", callback_data=f"reassign_order_{package['_id']}")]
-                ])
+                        buttons = []
+                        if package.get('status') == 'in transit':
+                            buttons.append([InlineKeyboardButton(text="✅ Confirm Delivery", callback_data=f"confirm_delivery_{package['_id']}")])
+                        elif package.get('status') == 'in warehouse':
+                            buttons.append([InlineKeyboardButton(text="🚚 Confirm Pick-up", callback_data=f"change_status_{package['_id']}")])
+                            buttons.append([InlineKeyboardButton(text="🚫 Reassign Order", callback_data=f"reassign_order_{package['_id']}_{package.get('name', 'N/A')}")])
 
-                # Send package details + buttons
-                self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown", reply_markup=keyboard)
+                        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+                        self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown", reply_markup=keyboard)
 
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ Failed to fetch assigned packages. Please try again.")
 
         except Exception as e:
-                logging.error(f"❌ Error fetching assigned packages: {str(e)}")
-                self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
+            logging.error(f"❌ Error fetching assigned packages: {str(e)}")
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
+
 
 
 
