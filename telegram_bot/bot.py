@@ -4,6 +4,7 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
 
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -21,12 +22,25 @@ class RESTBot:
     def on_chat_message(self, msg):
         """Handles incoming text messages."""
         content_type, chat_type, chat_id = telepot.glance(msg)
-        message = msg.get('text', '')
+        message = msg.get('text', '').strip().lower()  # Convert to lowercase for consistency
 
         print(f"🔹 Message received: {message} from {chat_id}")  
 
         if chat_id not in self.chatIDs:
             self.chatIDs[chat_id] = {"state": None, "driver_id": None}
+
+        #Shortcuts dictionary
+        shortcuts = {
+            "s": "/start", "st": "/start", "sta": "/start", "star": "/start",
+            "d": "/driver_details", "de": "/driver_details", "det": "/driver_details",
+            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel", "pane": "/panel"
+        }
+
+        #Convert shortcut message to full command
+        if message in shortcuts:
+            message = shortcuts[message]  # Replace the shortcut with the full command
+
+
 
         if message == "/start":
             print("✅ Start command received!")  
@@ -35,6 +49,28 @@ class RESTBot:
                 [InlineKeyboardButton(text="🏢 Warehouse User", callback_data='enter_as_warehouse')]
             ])
             self.bot.sendMessage(chat_id, text="Welcome to the Logistics Bot. Please choose your role:", reply_markup=keyboard)
+        
+        elif message == "/panel":
+            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            if driver_id:
+                self.driver_panel(chat_id, driver_id)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
+        elif message == "/pick_package":
+            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            if driver_id:
+                self.show_available_packages(chat_id, driver_id)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
+        elif message == "/driver_details":
+            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            if driver_id:
+                 self.send_driver_details(chat_id)
+            else:
+                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_driver_id":
             print(f"📡 Fetching driver details for ID: {message}")
@@ -75,16 +111,37 @@ class RESTBot:
         elif query_data.startswith("change_status_"):
             package_id = query_data.replace("change_status_", "")
             self.change_package_status(from_id, package_id)
+        
+        elif query_data == "driver_panel":
+            driver_id = self.chatIDs[from_id]["driver_id"]
+            self.driver_panel(from_id, driver_id)
 
         elif query_data.startswith("confirm_delivery_"):
             package_id = query_data.replace("confirm_delivery_", "")
             self.confirm_package_delivery(from_id, package_id)
         
-        elif query_data.startswith("reassign_order_"):  
-            package_id = query_data.split("_")[-1]
-            self.cancel_package_assignment(from_id, package_id)
-        
-        
+        elif query_data.startswith("reassign_order_"):
+            data = query_data.split("_")
+            package_id = data[2]
+            package_name = '_'.join(data[3:])  # Since package names might contain underscores, join the rest
+
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Yes, Reassign", callback_data=f"confirm_reassign_{package_id}")],
+                [InlineKeyboardButton(text="❌ No, Cancel", callback_data="cancel_action")]
+            ])
+
+            # Send a confirmation message including the package name
+            self.bot.sendMessage(from_id, text=f"⚠️ Are you sure you want to reassign the package '{package_name}'?", reply_markup=keyboard)
+
+        elif query_data.startswith("confirm_reassign_"):
+            package_id = query_data.split("_")[2]
+            self.cancel_package_assignment(from_id, package_id)  
+
+        elif query_data == "cancel_action":
+            self.bot.sendMessage(from_id, text="❌ Action canceled.")
+
+
+
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
             self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
@@ -116,7 +173,8 @@ class RESTBot:
 
                     keyboard = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="📝 View My Details", callback_data="view_driver_details")],
-                        [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")]
+                        [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")],
+                        [InlineKeyboardButton(text="📂 My Panel", callback_data="driver_panel")] 
                     ])
                     self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
                 else:
@@ -206,15 +264,29 @@ class RESTBot:
 
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
-            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages.")
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
-        url = f"{self.catalog_url}/packages/assign_driver?package_id={package_id}&driver_id={driver_id}"
+        url = f"{self.catalog_url}/packages/packages?package_id={package_id}&driver_id={driver_id}"
 
         try:
+            # Check if package is already assigned
+            package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+            package_response = requests.get(package_details_url, timeout=5)
+ 
+            if package_response.status_code == 200:
+                package = package_response.json()
+        
+                if package.get("driver_id") and package["driver_id"] != "":
+                    self.bot.sendMessage(chat_id, text="❌ This package has already been assigned to another driver. Please select another package from the list")
+                    return  
+ 
+
+            # If package is not assigned, do the assignment
             data = {"driver_id": driver_id}
             response = requests.put(url, json=data, timeout=5)
+
             if response.status_code == 200:
                 self.bot.sendMessage(chat_id, text="✅ Package successfully assigned to you! 🚚\nYou can now go to the warehouse to pick it up!")
 
@@ -253,10 +325,10 @@ class RESTBot:
 
                        
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔄 Status Changing", callback_data=f"change_status_{package_id}")],
+                    [InlineKeyboardButton(text="🔄 Confirm Pick-up", callback_data=f"change_status_{package_id}")],
                     [InlineKeyboardButton(text="🚫 Reassigning Order", callback_data=f"reassign_order_{package_id}")]
                 ])
-                self.bot.sendMessage(chat_id, text="You can change the status after loading or cancel the order by pressing this option:", reply_markup=keyboard)
+                self.bot.sendMessage(chat_id, text="You can change the status after loading or cancel the order by pressing these options", reply_markup=keyboard)
 
             else:
                  self.bot.sendMessage(chat_id, text="⚠️ Failed to assign package.")
@@ -351,13 +423,68 @@ class RESTBot:
         ])
         self.bot.sendMessage(chat_id, text="Welcome to the Logistics Bot. Please choose your role:", reply_markup=keyboard)
 
+
     def send_driver_menu(self, chat_id):
-        """Send the driver-specific menu."""
+        """Send the driver-specific menu, including an option to view assigned packages."""
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-             [InlineKeyboardButton(text="📋 View My Details", callback_data="view_driver_details")],
-             [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")]
+            [InlineKeyboardButton(text="📋 View My Details", callback_data="view_driver_details")],
+            [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")],
+            [InlineKeyboardButton(text="📂 My Panel", callback_data="driver_panel")]
         ])
         self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
+
+
+
+    def driver_panel(self, chat_id, driver_id):
+        """Fetch and display all packages assigned to the driver, filtering out delivered packages."""
+        url = f"{self.catalog_url}/packages/packages?driver_id={driver_id}"
+
+        try:
+            response = requests.get(url, timeout=5)
+            logging.debug(f"📡 API Response Status: {response.status_code}")
+            logging.debug(f"📦 API Response Content: {response.text}")  # Log the full API response
+
+            if response.status_code == 200:
+                packages = response.json()
+
+                if not packages:
+                    self.bot.sendMessage(chat_id, text="📦 You have no assigned packages at the moment.")
+                    return
+
+                for package in packages:
+                    if package.get('status') != 'delivered':
+                        package_info = (
+                            f"📦 *Package Details:*\n"
+                            f"🆔 *ID:* {package['_id']}\n"
+                            f"📦 *Name:* {package.get('name', 'N/A')}\n"
+                            f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
+                            f"🏢 *Warehouse:* {package.get('warehouse_id', 'N/A')}\n"
+                            f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
+                            f"{package.get('delivery_address', {}).get('city', 'N/A')} "
+                            f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
+                            f"🚦 *Status:* {package.get('status', 'N/A')}"
+                        )
+
+                        buttons = []
+                        if package.get('status') == 'in transit':
+                            buttons.append([InlineKeyboardButton(text="✅ Confirm Delivery", callback_data=f"confirm_delivery_{package['_id']}")])
+                        elif package.get('status') == 'in warehouse':
+                            buttons.append([InlineKeyboardButton(text="🚚 Confirm Pick-up", callback_data=f"change_status_{package['_id']}")])
+                            buttons.append([InlineKeyboardButton(text="🚫 Reassign Order", callback_data=f"reassign_order_{package['_id']}_{package.get('name', 'N/A')}")])
+
+                        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+                        self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown", reply_markup=keyboard)
+
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ Failed to fetch assigned packages. Please try again.")
+
+        except Exception as e:
+            logging.error(f"❌ Error fetching assigned packages: {str(e)}")
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
+
+
+
+
 
     def fetch_warehouse_details(self, chat_id, warehouse_id):
         """Fetch warehouse details from the catalog API."""
@@ -444,14 +571,3 @@ if __name__ == "__main__":
     print("🤖 Bot is running. Press Ctrl+C to exit.")
     while True:
         pass
-
-
-
-
-
-
-
-
-
-
-
