@@ -1,10 +1,10 @@
 FROM python:3.9-slim
 
-WORKDIR /app
+WORKDIR /app/reputation_service
 
-COPY requirements.txt /app/
-RUN pip install -r requirements.txt
+COPY . .
 
-COPY . /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
 
 CMD ["python", "reputation.py"]
