@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ReputationService:
-    exposed = True  # Allow CherryPy to expose this class
+    exposed = True 
 
     def __init__(self):
         self.catalog_url = os.getenv('CATALOG_URL', 'http://localhost:8080')
