@@ -45,7 +45,14 @@ class influxconnectoreServer:
                 return vehicles_json
             else:
                 return {"error": "Missing latitude/longitude range or period parameter"}
-
+        elif uri and uri[0] == 'allvehicles':
+            period = params.get('period')
+            if period:
+                vehicles = self.influxdb.show_all_vehicles_on_map(period)
+                vehicles_json = vehicles.to_json(orient='columns')
+                return vehicles_json
+            else:
+                return {"error": "Missing period parameter"}
         else:
             return {"error": "Invalid URI"}
 

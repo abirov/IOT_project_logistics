@@ -1,13 +1,13 @@
 from bson import ObjectId
 
 class Package:
-    def __init__(self, name: str, weight: float, dimensions: dict, warehouse_id: str, driver_id:str , status: str, _id: ObjectId =ObjectId(), delivery_address: dict = None):
+    def __init__(self, name: str, weight: float, dimensions: dict, warehouse_id: str, driver_id:str , status: str, _id: ObjectId =None, delivery_address: dict = None):
         self.name = name
         self.weight = weight
         self.dimensions = dimensions
         self.warehouse_id = warehouse_id
         self.driver_id = driver_id #can be None until assigned to a driver
-        self._id = _id
+        self._id = _id if _id else ObjectId()
         self.status = status #can be "in warehouse", "en route", "delivered"
         self.delivery_address = delivery_address #can be None until assigned to a driver
 

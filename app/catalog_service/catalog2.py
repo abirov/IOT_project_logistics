@@ -161,6 +161,19 @@ class packageServer:
             elif "no_driver" in params:
                 packages = self.package_repo.list_all_packages_without_driver()
                 return [package.to_dict() for package in packages]
+
+            # NEW: If a driver ID is provided, get the packages for that driver
+            elif "driver_id" in params:
+                driver_id = params["driver_id"]
+                # You need a method in your repository: get_by_driver_id(driver_id)
+                packages = self.package_repo.get_by_driver_id(driver_id)
+                return [package.to_dict() for package in packages] if packages else []
+        
+            # get address of warehouse by package id
+            elif "warehouse_address" in params:
+                package_id = params["package_id"]
+                package = self.package_repo.get_warehouse_address(package_id)
+                return package.to_dict() if package else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
         else:
@@ -231,6 +244,10 @@ class FeedbackServer:
             elif "warehouse_id" in params:
                 warehouse_id = params["warehouse_id"]
                 feedback = self.feedback_repo.get_by_warehouse_id(warehouse_id)
+                return feedback.to_dict() if feedback else None
+            elif "package_id" in params:
+                package_id = params["package_id"]
+                feedback = self.feedback_repo.get_by_package_id(package_id)
                 return feedback.to_dict() if feedback else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
