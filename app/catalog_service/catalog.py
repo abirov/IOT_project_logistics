@@ -91,10 +91,10 @@ class CatalogService:
         return self.feedback_repo.get_by_rating(f_id)
 
     def get_feedback_by_driver(self, driver_id):
-    return self.feedback_repo.get_by_driver_id(driver_id)
+        return self.feedback_repo.get_by_driver_id(driver_id)
 
     def get_feedback_by_warehouse(self, warehouse_id):
-    return self.feedback_repo.get_by_warehouse_id(warehouse_id)
+        return self.feedback_repo.get_by_warehouse_id(warehouse_id)
 
 
     ## Vehicle functionality
@@ -292,27 +292,27 @@ class FeedbackServer:
         self.service = CatalogService()
 
     exposed = True
-    
+
     @cherrypy.tools.json_out()
-def GET(self, *uri, **params):
-    if 'feedback' in uri:
-        if 'driver_id' in params:
-            feedbacks = self.service.get_feedback_by_driver(params['driver_id'])
-            return [feedback.to_dict() for feedback in feedbacks] if feedbacks else []
-        elif 'warehouse_id' in params:
-            feedbacks = self.service.get_feedback_by_warehouse(params['warehouse_id'])
-            return [feedback.to_dict() for feedback in feedbacks] if feedbacks else []
-        elif 'feedback_id' in params:
-            feedback = self.service.get_feedback_by_id(params['feedback_id'])
-            return feedback.to_dict() if feedback else {}
+    def GET(self, *uri, **params):
+        if 'feedback' in uri:
+            if 'driver_id' in params:
+                feedbacks = self.service.get_feedback_by_driver(params['driver_id'])
+                return [feedback.to_dict() for feedback in feedbacks] if feedbacks else []
+            elif 'warehouse_id' in params:
+                feedbacks = self.service.get_feedback_by_warehouse(params['warehouse_id'])
+                return [feedback.to_dict() for feedback in feedbacks] if feedbacks else []
+            elif 'feedback_id' in params:
+                feedback = self.service.get_feedback_by_id(params['feedback_id'])
+                return feedback.to_dict() if feedback else {}
         else:
             raise cherrypy.HTTPError(400, "Missing driver_id, warehouse_id, or feedback_id")
-    raise cherrypy.HTTPError(400, "Invalid GET request")
-
+        raise cherrypy.HTTPError(400, "Invalid GET request")
 
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
     def POST(self, *uri, **params):
+
         data = cherrypy.request.json
         if 'feedback' in uri:
             return {"feedback_id": self.service.create_feedback(data)}
