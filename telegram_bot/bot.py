@@ -224,6 +224,8 @@ class RESTBot:
             logging.error(f"❌ Error retrieving driver details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving driver details.")
 
+    
+
     def show_available_packages(self, chat_id, driver_id):
         """Show available packages for pickup."""
         url = f"{self.catalog_url}/packages/packages?no_driver"
@@ -236,9 +238,10 @@ class RESTBot:
                     self.bot.sendMessage(chat_id, text="📦 No packages are available for pickup right now.")
                     return
 
-                keyboard = []
                 for package in packages:
-                    # Retrieve and format warehouse information
+                    package_details = self.fetch_package_details(package['_id'])
+
+                    '''# Retrieve and format warehouse information
                     warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
                     package_details = (
                         f"📦 *Package Name:* {package.get('name', 'N/A')}\n"
@@ -252,19 +255,23 @@ class RESTBot:
                         f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('city', 'N/A')}, "
                         f"{package.get('delivery_address', {}).get('street', 'N/A')} "
                         f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})"
-                    )
-                    self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
-                    keyboard.append([InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")])
+                    )'''
 
-                reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-                self.bot.sendMessage(chat_id, text="Select a package to pick up:", reply_markup=reply_markup)
+                    self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
+
+                    # Create a keyboard for this specific package
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")]
+                    ])
+                    self.bot.sendMessage(chat_id, text="Select this package to pick up:", reply_markup=keyboard)
+
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ Failed to fetch available packages.")
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
 
-    
+
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
         try:
@@ -287,7 +294,10 @@ class RESTBot:
                 assignment_message = f"✅ Package successfully assigned to you!\n 🚚 Pick it up at *{warehouse_info}*"
                 self.bot.sendMessage(chat_id, text=assignment_message, parse_mode="Markdown")
 
-                package_info = (
+                package_info = self.fetch_package_details(package_id)
+            
+            
+                '''package_info = (
                     f"📦 *Package Details:*\n"
                     f"🆔 *ID:* {package['_id']}\n"
                     f"📦 *Name:* {package.get('name', 'N/A')}\n"
@@ -298,7 +308,9 @@ class RESTBot:
                     f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
                     f"{package.get('delivery_address', {}).get('city', 'N/A')} "
                     f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})"
-                )
+                )'''
+            
+
                 self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown")
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -429,7 +441,9 @@ class RESTBot:
 
                 for package in packages:
                     if package.get('status') != 'delivered':
-                        package_info = (
+                        package_info = self.fetch_package_details(package['_id'])
+                        
+                        '''package_info = (
                             f"📦 *Package Details:*\n"
                             f"🆔 *ID:* {package['_id']}\n"
                             f"📦 *Name:* {package.get('name', 'N/A')}\n"
@@ -439,7 +453,7 @@ class RESTBot:
                             f"{package.get('delivery_address', {}).get('city', 'N/A')} "
                             f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
                             f"🚦 *Status:* {package.get('status', 'N/A')}"
-                        )
+                        )'''
 
                         buttons = []
                         if package.get('status') == 'in transit':
@@ -457,6 +471,44 @@ class RESTBot:
         except Exception as e:
             logging.error(f"❌ Error fetching assigned packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
+
+
+
+    def fetch_package_details(self, package_id):
+        """Fetch package details from the API and format them into a Markdown string for Telegram messages, including warehouse details."""
+        # Construct the URL to fetch package details
+        url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+        
+        try:
+            # Perform the API request for package details
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                package = response.json()
+                
+                # Fetch and format warehouse details if available
+                warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
+
+                # Format the package details
+                package_info = (
+                    f"📦 *Package Details:*\n"
+                    f"🆔 *ID:* {package.get('_id', 'N/A')}\n"
+                    f"📦 *Name:* {package.get('name', 'N/A')}\n"
+                    f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
+                    f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('width', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
+                    f"🏢 *Warehouse Details:* {warehouse_info}\n"
+                    f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
+                    f"{package.get('delivery_address', {}).get('city', 'N/A')} "
+                    f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
+                    f"🚦 *Status:* {package.get('status', 'N/A')}"
+                )
+                return package_info
+            else:
+                return "Failed to fetch package details."
+        except requests.RequestException as e:
+            return f"Error fetching package details: {str(e)}"
+
 
 
     def get_warehouse_details(self, warehouse_id):
