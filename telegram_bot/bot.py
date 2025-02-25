@@ -230,44 +230,41 @@ class RESTBot:
 
         try:
             response = requests.get(url, timeout=5)
-
             if response.status_code == 200:
                 packages = response.json()
-
                 if not packages:
                     self.bot.sendMessage(chat_id, text="📦 No packages are available for pickup right now.")
                     return
 
                 keyboard = []
                 for package in packages:
+                    # Retrieve and format warehouse information
+                    warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
                     package_details = (
                         f"📦 *Package Name:* {package.get('name', 'N/A')}\n"
                         f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
                         f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
                         f"{package.get('dimensions', {}).get('width', 'N/A')} x "
                         f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
-                        f"🏢 *Warehouse ID:* {package.get('warehouse_id', 'N/A')}\n"
+                        f"🏢 *Warehouse Details:* {warehouse_info}\n"
                         f"👤 *Driver Assigned:* {'None' if not package.get('driver_id') else package['driver_id']}\n"
                         f"🚦 *Status:* {package.get('status', 'N/A')}\n"
                         f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('city', 'N/A')}, "
                         f"{package.get('delivery_address', {}).get('street', 'N/A')} "
-                        f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
+                        f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})"
                     )
-
                     self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
-
                     keyboard.append([InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")])
 
                 reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
                 self.bot.sendMessage(chat_id, text="Select a package to pick up:", reply_markup=reply_markup)
-
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ Failed to fetch available packages.")
-
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
 
+    
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
         try:
