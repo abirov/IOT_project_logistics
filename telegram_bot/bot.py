@@ -270,10 +270,7 @@ class RESTBot:
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
-        url = f"{self.catalog_url}/packages/packages?package_id={package_id}&driver_id={driver_id}"
-
         try:
-            # Check if package is already assigned
             package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             package_response = requests.get(package_details_url, timeout=5)
 
@@ -286,24 +283,13 @@ class RESTBot:
 
             # If package is not assigned, do the assignment
             data = {"driver_id": driver_id}
-            response = requests.put(url, json=data, timeout=5)
+            response = requests.put(package_details_url, json=data, timeout=5)
 
             if response.status_code == 200:
-                warehouse_id = package.get("warehouse_id")
-                warehouse_info = "Warehouse details not available."
-                if warehouse_id:
-                    # Fetch warehouse details
-                    warehouse_details_url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
-                    warehouse_response = requests.get(warehouse_details_url, timeout=5)
-                    if warehouse_response.status_code == 200:
-                        warehouse = warehouse_response.json()
-                        warehouse_name = warehouse.get('name', 'N/A')
-                        warehouse_address = f"{warehouse.get('address', {}).get('street', 'N/A')}, {warehouse.get('address', {}).get('city', 'N/A')}"
-                        warehouse_info = f"Pick it up at *{warehouse_name}*, *{warehouse_address}*."
-                assignment_message = f"✅ Package successfully assigned to you! 🚚\n{warehouse_info}"
+                warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
+                assignment_message = f"✅ Package successfully assigned to you!\n 🚚 Pick it up at *{warehouse_info}*"
                 self.bot.sendMessage(chat_id, text=assignment_message, parse_mode="Markdown")
 
-                # package details
                 package_info = (
                     f"📦 *Package Details:*\n"
                     f"🆔 *ID:* {package['_id']}\n"
@@ -318,7 +304,6 @@ class RESTBot:
                 )
                 self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown")
 
-                # Inline keyboard options
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔄 Confirm Pick-up", callback_data=f"change_status_{package_id}")],
                     [InlineKeyboardButton(text="🚫 Reassigning Order", callback_data=f"reassign_order_{package_id}")]
@@ -330,7 +315,7 @@ class RESTBot:
             logging.error(f"❌ Error assigning package: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while assigning the package.")
 
-    
+        
     
     def change_package_status(self, chat_id, package_id):
         """Change the package status from 'in warehouse' to 'in transit'."""
@@ -477,6 +462,21 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
 
 
+    def get_warehouse_details(self, warehouse_id):
+        """Fetches and formats warehouse details from the catalog API using the warehouse ID."""
+        warehouse_details_url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
+        try:
+            response = requests.get(warehouse_details_url, timeout=5)
+            if response.status_code == 200:
+                warehouse = response.json()
+                warehouse_name = warehouse.get('name', 'N/A')
+                warehouse_address = f"{warehouse.get('address', {}).get('street', 'N/A')}, {warehouse.get('address', {}).get('city', 'N/A')}"
+                return f"{warehouse_name}, {warehouse_address}"
+            else:
+                return "Warehouse details not available."
+        except requests.RequestException as e:
+            logging.error(f"Error fetching warehouse details: {str(e)}")
+            return "Warehouse details not available."
 
 
 
