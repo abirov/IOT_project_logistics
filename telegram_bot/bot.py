@@ -1,3 +1,4 @@
+
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
@@ -84,6 +85,7 @@ class RESTBot:
             print("⚠️ Unsupported command received.")
             self.bot.sendMessage(chat_id, text="Command not supported. Use /start to begin.")
 
+
     def on_callback_query(self, msg):
         """Handles button clicks in Telegram."""
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
@@ -91,6 +93,9 @@ class RESTBot:
 
         if from_id not in self.chatIDs:
             self.chatIDs[from_id] = {"state": None, "driver_id": None}
+
+        if query_data == 'track_vehicle':
+            self.track_vehicle(from_id)  # Call a method to handle vehicle tracking
 
         if query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
@@ -141,15 +146,12 @@ class RESTBot:
             self.bot.sendMessage(from_id, text="❌ Action canceled.")
 
 
-
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
             self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
 
         elif query_data == "view_warehouse_details":
             self.send_warehouse_details(from_id)
-
-
 
         self.bot.answerCallbackQuery(query_id, text="")
 
@@ -222,121 +224,107 @@ class RESTBot:
             logging.error(f"❌ Error retrieving driver details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving driver details.")
 
+    
+
     def show_available_packages(self, chat_id, driver_id):
         """Show available packages for pickup."""
         url = f"{self.catalog_url}/packages/packages?no_driver"
 
         try:
             response = requests.get(url, timeout=5)
-
             if response.status_code == 200:
                 packages = response.json()
-
                 if not packages:
                     self.bot.sendMessage(chat_id, text="📦 No packages are available for pickup right now.")
                     return
 
-                keyboard = []
                 for package in packages:
+                    package_details = self.fetch_package_details(package['_id'])
+
+                    '''# Retrieve and format warehouse information
+                    warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
                     package_details = (
                         f"📦 *Package Name:* {package.get('name', 'N/A')}\n"
                         f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
                         f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
                         f"{package.get('dimensions', {}).get('width', 'N/A')} x "
                         f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
-                        f"🏢 *Warehouse ID:* {package.get('warehouse_id', 'N/A')}\n"
+                        f"🏢 *Warehouse Details:* {warehouse_info}\n"
                         f"👤 *Driver Assigned:* {'None' if not package.get('driver_id') else package['driver_id']}\n"
                         f"🚦 *Status:* {package.get('status', 'N/A')}\n"
                         f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('city', 'N/A')}, "
                         f"{package.get('delivery_address', {}).get('street', 'N/A')} "
-                        f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
-                    )
+                        f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})"
+                    )'''
 
                     self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
 
-                    keyboard.append([InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")])
-
-                reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-                self.bot.sendMessage(chat_id, text="Select a package to pick up:", reply_markup=reply_markup)
+                    # Create a keyboard for this specific package
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")]
+                    ])
+                    self.bot.sendMessage(chat_id, text="Select this package to pick up:", reply_markup=keyboard)
 
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ Failed to fetch available packages.")
-
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
 
+
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
         """Assign the selected package to the driver and provide options to change status or cancel."""
-        url = f"{self.catalog_url}/packages/packages?package_id={package_id}&driver_id={driver_id}"
-
         try:
-            # Check if package is already assigned
             package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             package_response = requests.get(package_details_url, timeout=5)
- 
+
             if package_response.status_code == 200:
                 package = package_response.json()
-        
+            
                 if package.get("driver_id") and package["driver_id"] != "":
                     self.bot.sendMessage(chat_id, text="❌ This package has already been assigned to another driver. Please select another package from the list")
                     return  
- 
 
             # If package is not assigned, do the assignment
             data = {"driver_id": driver_id}
-            response = requests.put(url, json=data, timeout=5)
+            response = requests.put(package_details_url, json=data, timeout=5)
 
             if response.status_code == 200:
-                self.bot.sendMessage(chat_id, text="✅ Package successfully assigned to you! 🚚\nYou can now go to the warehouse to pick it up!")
+                warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
+                assignment_message = f"✅ Package successfully assigned to you!\n 🚚 Pick it up at *{warehouse_info}*"
+                self.bot.sendMessage(chat_id, text=assignment_message, parse_mode="Markdown")
 
-                package_details_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+                package_info = self.fetch_package_details(package_id)
+            
+            
+                '''package_info = (
+                    f"📦 *Package Details:*\n"
+                    f"🆔 *ID:* {package['_id']}\n"
+                    f"📦 *Name:* {package.get('name', 'N/A')}\n"
+                    f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
+                    f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('width', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
+                    f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
+                    f"{package.get('delivery_address', {}).get('city', 'N/A')} "
+                    f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})"
+                )'''
+            
 
-                try:
-                    package_response = requests.get(package_details_url, timeout=5)
+                self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown")
 
-                    if package_response.status_code == 200:
-                        package = package_response.json()
-
-                        # package details
-                        package_info = (
-                            f"📦 *Package Details:*\n"
-                            f"🆔 *ID:* {package['_id']}\n"
-                            f"📦 *Name:* {package.get('name', 'N/A')}\n"
-                            f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
-                            f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
-                            f"{package.get('dimensions', {}).get('width', 'N/A')} x "
-                            f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
-                            f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
-                            f"{package.get('delivery_address', {}).get('city', 'N/A')} "
-                            f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
-                            
-                        )
-
-                    
-                        self.bot.sendMessage(chat_id, text=package_info, parse_mode="Markdown")
-
-                    else:
-                        self.bot.sendMessage(chat_id, text="⚠️ Could not fetch package details. Please try again.")
-
-                except Exception as e:
-                    logging.error(f"❌ Error fetching package details: {str(e)}")
-                    self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving package details.")
-
-                       
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔄 Confirm Pick-up", callback_data=f"change_status_{package_id}")],
                     [InlineKeyboardButton(text="🚫 Reassigning Order", callback_data=f"reassign_order_{package_id}")]
                 ])
                 self.bot.sendMessage(chat_id, text="You can change the status after loading or cancel the order by pressing these options", reply_markup=keyboard)
-
             else:
-                 self.bot.sendMessage(chat_id, text="⚠️ Failed to assign package.")
+                self.bot.sendMessage(chat_id, text="⚠️ Failed to assign package.")
         except Exception as e:
             logging.error(f"❌ Error assigning package: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while assigning the package.")
 
-    
+        
     
     def change_package_status(self, chat_id, package_id):
         """Change the package status from 'in warehouse' to 'in transit'."""
@@ -453,7 +441,9 @@ class RESTBot:
 
                 for package in packages:
                     if package.get('status') != 'delivered':
-                        package_info = (
+                        package_info = self.fetch_package_details(package['_id'])
+                        
+                        '''package_info = (
                             f"📦 *Package Details:*\n"
                             f"🆔 *ID:* {package['_id']}\n"
                             f"📦 *Name:* {package.get('name', 'N/A')}\n"
@@ -463,7 +453,7 @@ class RESTBot:
                             f"{package.get('delivery_address', {}).get('city', 'N/A')} "
                             f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
                             f"🚦 *Status:* {package.get('status', 'N/A')}"
-                        )
+                        )'''
 
                         buttons = []
                         if package.get('status') == 'in transit':
@@ -483,6 +473,59 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching your assigned packages.")
 
 
+
+    def fetch_package_details(self, package_id):
+        """Fetch package details from the API and format them into a Markdown string for Telegram messages, including warehouse details."""
+        # Construct the URL to fetch package details
+        url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+        
+        try:
+            # Perform the API request for package details
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                package = response.json()
+                
+                # Fetch and format warehouse details if available
+                warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
+
+                # Format the package details
+                package_info = (
+                    f"📦 *Package Details:*\n"
+                    f"🆔 *ID:* {package.get('_id', 'N/A')}\n"
+                    f"📦 *Name:* {package.get('name', 'N/A')}\n"
+                    f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
+                    f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('width', 'N/A')} x "
+                    f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
+                    f"🏢 *Warehouse Details:* {warehouse_info}\n"
+                    f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
+                    f"{package.get('delivery_address', {}).get('city', 'N/A')} "
+                    f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
+                    f"🚦 *Status:* {package.get('status', 'N/A')}"
+                )
+                return package_info
+            else:
+                return "Failed to fetch package details."
+        except requests.RequestException as e:
+            return f"Error fetching package details: {str(e)}"
+
+
+
+    def get_warehouse_details(self, warehouse_id):
+        """Fetches and formats warehouse details from the catalog API using the warehouse ID."""
+        warehouse_details_url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
+        try:
+            response = requests.get(warehouse_details_url, timeout=5)
+            if response.status_code == 200:
+                warehouse = response.json()
+                warehouse_name = warehouse.get('name', 'N/A')
+                warehouse_address = f"{warehouse.get('address', {}).get('street', 'N/A')}, {warehouse.get('address', {}).get('city', 'N/A')}"
+                return f"{warehouse_name}, {warehouse_address}"
+            else:
+                return "Warehouse details not available."
+        except requests.RequestException as e:
+            logging.error(f"Error fetching warehouse details: {str(e)}")
+            return "Warehouse details not available."
 
 
 
@@ -506,7 +549,7 @@ class RESTBot:
                    # Show options
                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
                        [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
-                       [InlineKeyboardButton(text="📦 Tracking", callback_data="tracking")]
+                       [InlineKeyboardButton(text="📦 Tracking", callback_data="track_vehicle")]
                     ])
                    self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
 
@@ -557,7 +600,38 @@ class RESTBot:
              logging.error(f"❌ Error retrieving warehouse details: {str(e)}")
              self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving warehouse details.")
 
+    def track_vehicle(self, chat_id):
+        """Simulate tracking by sending a location map."""
+        # Example coordinates for demonstration
+        latitude, longitude = 40.7128, -74.0060  # New York City coordinates for example
+        map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={latitude},{longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7Clabel:V%7C{latitude},{longitude}&key=AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
 
+        # Fetch the map image from the URL
+        response = requests.get(map_url)
+        if response.status_code == 200:
+            # Write the image to a temporary file
+            temp_image_path = 'temp_map.png'
+            with open(temp_image_path, 'wb') as f:
+                f.write(response.content)
+            
+            # Send the image to the chat
+            with open(temp_image_path, 'rb') as photo:
+                self.bot.sendPhoto(chat_id, photo=photo, caption="Current location of the delivery vehicle.")
+        else:
+            # Print detailed error information if the map retrieval fails
+            print("Failed to retrieve map image. Status code:", response.status_code)
+            print("Response body:", response.text)  # This will print the error details provided by Google Maps API
+            self.bot.sendMessage(chat_id, "Failed to retrieve map image.")
+
+    #def track_vehicle(self, chat_id):
+        #"""Send a link to Google Maps showing a location."""
+        # Example coordinates for demonstration
+        #latitude, longitude = 40.7128, -74.0060  # New York City coordinates
+        # Create a URL that opens these coordinates in Google Maps
+        #map_url = f"https://www.google.com/maps/?q={latitude},{longitude}"
+
+        # Send the URL as a clickable link in a message
+        #self.bot.sendMessage(chat_id, text=f"View the location on Google Maps: {map_url}", disable_web_page_preview=True)
 
 
 
