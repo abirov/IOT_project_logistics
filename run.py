@@ -3,8 +3,8 @@ import subprocess
 def run_services():
     services = [
         "app/catalog_service/catalog2.py",
-        #"telegram_bot/Bot.py",
-       # "app/reputation_service/reputation.py",
+        "telegram_bot/Bot.py",
+        "app/reputation_service/reputation.py",
 
         ##"app/simulation_service/simulation.py",
 

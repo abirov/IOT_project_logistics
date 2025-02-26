@@ -4,12 +4,15 @@ import requests
 import os
 from datetime import datetime
 import json
+
 class WebApp:
-    def __init__(self, catalog_url):
+    def __init__(self, catalog_url, reputation_url):
         template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         self.env = Environment(loader=FileSystemLoader(template_dir))
-        catalog_url = os.getenv('CATALOG_URL', 'http://127.0.0.1:8080')  #  localhost
+        catalog_url = os.getenv('CATALOG_URL', catalog_url)  # Default to local
+        reputation_url = os.getenv('REPUTATION_URL', reputation_url)  # Default Reputation Service URL
         self.catalog_url = catalog_url
+        self.reputation_url=reputation_url
 
     @cherrypy.expose
     def index(self):
@@ -155,6 +158,14 @@ class WebApp:
             driver_response.raise_for_status()
             driver = driver_response.json()
             cherrypy.log(f"Driver data: {driver}")
+            # ✅ Fetch reputation directly from Reputation Service
+            reputation_url = f"{self.reputation_url}/Reputation"
+            reputation_response = requests.put(reputation_url, json={"driver_id": driver_id})  # ✅ Correct: Send driver_id in JSON
+            reputation_response.raise_for_status()
+            reputation_data = reputation_response.json()
+            driver_reputation = reputation_data.get("reputation", "N/A")
+            cherrypy.log(f"Driver Reputation: {driver_reputation}")
+
 
             # feedbacks for the driver
             feedback_url = "http://127.0.0.1:8080/feedbacks/feedbacks"
@@ -217,6 +228,7 @@ class WebApp:
             template = self.env.get_template('driver_dashboard.html')
             return template.render(
                 driver=driver,
+                driver_reputation=driver_reputation,
                 feedbacks=feedback_list,
                 available_packages=available_packages,
                 selected_packages=selected_packages
@@ -263,8 +275,7 @@ class WebApp:
             response.raise_for_status()
 
             cherrypy.log(f"Package {package_id} marked as delivered by driver {driver_id}")
-            # no redirect
-            return f"well done you delivered Package {package_id} successfully!"
+            return self.dashboard(driver_id)  # go to dashboard 
     
 
      
@@ -303,13 +314,9 @@ class WebApp:
             url = f"http://127.0.0.1:8080/drivers/drivers?driver_id={driver_id}"
             response = requests.put(url, json=data)
             response.raise_for_status()
-
-            return f"""
-            <html><body>
-                <h3>Profile Updated Successfully!</h3>
-                <a href="/dashboard?driver_id={driver_id}">Back to Dashboard</a>
-            </body></html>
-            """
+            return self.dashboard(driver_id)  # go to dashboard 
+            
+           
         except requests.exceptions.RequestException as e:
             cherrypy.log(f"Error updating driver profile: {e}")
             raise cherrypy.HTTPError(500, "Failed to update driver profile")
@@ -544,12 +551,8 @@ class WebApp:
             response = requests.put(url, json=data)
             response.raise_for_status()
 
-            return f"""
-            <html><body>
-                <h3>Warehouse {warehouse_id} Updated Successfully!</h3>
-                <a href="/warehouse_dashboard?warehouse_id={warehouse_id}">Back to Warehouse Dashboard</a>
-            </body></html>
-            """
+            return self.warehouse_dashboard(warehouse_id)
+            
         except requests.exceptions.RequestException as e:
             cherrypy.log(f"Error updating warehouse {warehouse_id}: {e}")
             raise cherrypy.HTTPError(500, "Failed to update warehouse")
@@ -575,6 +578,7 @@ class WebApp:
                 <a href="/warehouse_options">Return to Warehouse Options</a>
             </body></html>
             """
+        
         except requests.exceptions.RequestException as e:
             cherrypy.log(f"Error deleting warehouse {warehouse_id}: {e}")
             raise cherrypy.HTTPError(500, "Failed to delete warehouse")
@@ -616,7 +620,7 @@ class WebApp:
             response = requests.post(f"http://127.0.0.1:8080/packages/packages", json=package_data)
             response.raise_for_status()
 
-            return f"<h1>Package '{package_name}' registered successfully for Warehouse {warehouse_id}!</h1>"
+            return self.warehouse_dashboard(warehouse_id)
         except ValueError as ve:
             cherrypy.log(f"Validation error: {ve}", traceback=True)
             raise cherrypy.HTTPError(400, f"Invalid input: {ve}")
@@ -645,9 +649,15 @@ class WebApp:
             # Send the feedback 
             response = requests.post(f"http://127.0.0.1:8080/feedbacks/feedbacks", json=feedback_data)
             response.raise_for_status()
+            # ✅ Trigger reputation recalculation directly
+            rep_url = f"{self.reputation_url}/Reputation"
+            rep_response = requests.put(rep_url, json={"driver_id": driver_id})
+            rep_response.raise_for_status()
+            new_reputation = rep_response.json().get("reputation", "N/A")
+            cherrypy.log(f"Updated Driver Reputation: {new_reputation}")
+
             
-            
-            return f"<h1>Feedback submitted successfully for Package {package_id}!</h1>"
+            return self.warehouse_dashboard(warehouse_id)
             
         except requests.exceptions.RequestException as req_err:
             
@@ -701,6 +711,7 @@ class WebApp:
 
 if __name__ == '__main__':
     catalog_url = os.getenv('CATALOG_URL', 'http://localhost:8080')
+    reputation_url = os.getenv('REPUTATION_URL', 'http://localhost:8082')
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config = {
@@ -710,4 +721,5 @@ if __name__ == '__main__':
         }
     }
 
-    cherrypy.quickstart(WebApp(catalog_url), '/',config)
+    cherrypy.quickstart(WebApp(catalog_url,reputation_url), '/',config)
+

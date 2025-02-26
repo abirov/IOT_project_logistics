@@ -244,7 +244,7 @@ class FeedbackServer:
                 return feedback.to_dict() if feedback else None
             # If a package ID is provided, get the feedback by package ID
             elif "package_id" in params:
-                package_ids = params.get("package_id")  # ✅ CORRECT
+                package_ids = params.get("package_id")  # CORRECT
                 if isinstance(package_ids, str):
                     package_ids = [package_ids]  # Convert single string to list
                 feedback = self.feedback_repo.get_by_package_ids(package_ids)
