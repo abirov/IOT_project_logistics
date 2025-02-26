@@ -35,10 +35,12 @@ class driverServer:
                 driver = self.driver_repo.get_by_name(driver_name)
                 return driver.to_dict() if driver else None
             
-            elif "email" in params:
-                email = params["email"]
-                driver = self.driver_repo.get_by_email(email)
+            # If a driver email is provided, get the driver by email
+            elif "driver_email" in params:
+                driver_email = params["driver_email"]
+                driver = self.driver_repo.get_by_email(driver_email)
                 return driver.to_dict() if driver else None
+            
             
             # If a package ID is provided, get the driver by package ID
             elif "package_id" in params:
