@@ -109,9 +109,10 @@ class warehouseServer:
                 warehouse_name = params["warehouse_name"]
                 warehouse = self.warehouse_repo.get_by_name(warehouse_name)
                 return warehouse.to_dict() if warehouse else None
-            elif "email" in params:
-                email = params["email"]
-                warehouse = self.warehouse_repo.get_by_email(email)
+            # If a warehouse email is provided, get the warehouse by email
+            elif "warehouse_email" in params:
+                warehouse_email = params["warehouse_email"]
+                warehouse = self.warehouse_repo.get_by_email(warehouse_email)
                 return warehouse.to_dict() if warehouse else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
