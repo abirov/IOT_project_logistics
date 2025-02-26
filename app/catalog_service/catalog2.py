@@ -29,6 +29,12 @@ class driverServer:
                 driver_id = params["driver_id"]
                 driver = self.driver_repo.get_by_id(driver_id)
                 return driver.to_dict() if driver else None
+            # If a driver email is provided, get the driver by email
+            elif "driver_email" in params:
+                driver_email = params["driver_email"]
+                driver = self.driver_repo.get_by_email(driver_email)
+                return driver.to_dict() if driver else None
+            
             # If a driver name is provided, get the driver by name
             elif "driver_name" in params:
                 driver_name = params["driver_name"]
@@ -96,6 +102,12 @@ class warehouseServer:
                 warehouse_id = params["warehouse_id"]
                 warehouse = self.warehouse_repo.get_by_id(warehouse_id)
                 return warehouse.to_dict() if warehouse else None
+            # If a warehouse email is provided, get the warehouse by email
+            elif "warehouse_email" in params:
+                warehouse_email = params["warehouse_email"]
+                warehouse = self.warehouse_repo.get_by_email(warehouse_email)
+                return warehouse.to_dict() if warehouse else None
+           
             # If a warehouse name is provided, get the warehouse by name
             elif "warehouse_name" in params:
                 warehouse_name = params["warehouse_name"]
@@ -230,6 +242,13 @@ class FeedbackServer:
                 feedback_id = params["feedback_id"]
                 feedback = self.feedback_repo.get_by_id(feedback_id)
                 return feedback.to_dict() if feedback else None
+            # If a package ID is provided, get the feedback by package ID
+            elif "package_id" in params:
+                package_ids = params.get("package_id")  # ✅ CORRECT
+                if isinstance(package_ids, str):
+                    package_ids = [package_ids]  # Convert single string to list
+                feedback = self.feedback_repo.get_by_package_ids(package_ids)
+                return [fb.to_dict() for fb in feedback] if feedback else []
             # If a driver ID is provided, get the feedback by driver ID
             elif "driver_id" in params:
                 driver_id = params["driver_id"]

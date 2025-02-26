@@ -42,7 +42,7 @@ class WebApp:
             raise cherrypy.HTTPError(500, "Internal Server Error")
 
     @cherrypy.expose
-    def submit_signin(self, name, email, phone, address, license_number):
+    def submit_signin(self, name, email, phone, address, license_number,car_model):
         """Submit Driver Sign-In Data to Catalog"""
         try:
             data = {
@@ -51,6 +51,8 @@ class WebApp:
                 "phone": phone,
                 "address": address,
                 "license_number": license_number,
+                #"vehicle_id":vehicle_id,
+                "car_model":car_model,
             }
             response = requests.post("http://127.0.0.1:8080/drivers/drivers", json=data)
             response.raise_for_status()
@@ -70,7 +72,8 @@ class WebApp:
         except Exception as e:
             cherrypy.log(f"Error rendering driver_login.html: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Internal Server Error")
-
+        
+    ''' 
     @cherrypy.expose
     def authenticate(self, driver_id):
         """Authenticate Driver by ID"""
@@ -96,8 +99,50 @@ class WebApp:
         except Exception as e:
             cherrypy.log(f"Error authenticating driver: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to authenticate driver")
+        '''
+        
 
-    
+
+    @cherrypy.expose
+    def authenticate(self, driver_email):
+        """Authenticate Driver by Email"""
+        try:
+            url = "http://127.0.0.1:8080/drivers/drivers"
+            cherrypy.log(f"Authenticating driver_email: {driver_email}")
+
+            # Query the driver details using the email
+            response = requests.get(url, params={"driver_email": driver_email})
+            response.raise_for_status()
+            driver_data = response.json()
+            cherrypy.log(f"Driver data from catalog: {driver_data}")
+
+            # Ensure response contains valid driver details
+            if not driver_data:
+                cherrypy.log("No driver found with this email.")
+                return "<h1>No driver found with this email. Please try again.</h1>"
+
+            # Extract driver_id from the response
+            driver_id = driver_data.get("_id")
+            if not driver_id:
+                cherrypy.log("Driver ID missing in catalog response.")
+                return "<h1>Error retrieving driver information. Contact support.</h1>"
+
+            cherrypy.log(f"Driver found: {driver_data}, Driver ID: {driver_id}")
+
+            # Redirect to dashboard with the driver_id
+            redirect_url = f"/dashboard?driver_id={driver_id}"
+            cherrypy.response.headers["Location"] = redirect_url
+            cherrypy.response.status = 303
+            return f'<html><body>Redirecting to <a href="{redirect_url}">dashboard</a>.</body></html>'
+        
+        except requests.exceptions.RequestException as req_err:
+            cherrypy.log(f"HTTP error when authenticating: {req_err}", traceback=True)
+            return "<h1>Failed to communicate with driver service. Please try again later.</h1>"
+        
+        except Exception as e:
+            cherrypy.log(f"Unexpected error during authentication: {e}", traceback=True)
+            return "<h1>An unexpected error occurred. Please try again.</h1>"
+        
 
 
     @cherrypy.expose
@@ -220,6 +265,7 @@ class WebApp:
             cherrypy.log(f"Package {package_id} marked as delivered by driver {driver_id}")
             # no redirect
             return f"well done you delivered Package {package_id} successfully!"
+    
 
      
 
@@ -231,25 +277,11 @@ class WebApp:
             response = requests.get("http://127.0.0.1:8080/drivers/drivers", params={"driver_id": driver_id})
             response.raise_for_status()
             driver_data = response.json()
+            # Render the edit_profile.html template
+            template = self.env.get_template('edit_profile.html')
+            return template.render(driver=driver_data, driver_id=driver_id)
 
-            # HTML to edit driver
-            return f"""
-            <html>
-            <head><title>Edit Driver Profile</title></head>
-            <body>
-                <h2>Edit Profile for: {driver_data['name']}</h2>
-                <form action="/submit_edit_profile" method="post">
-                    <input type="hidden" name="driver_id" value="{driver_id}">
-                    Name: <input type="text" name="name" value="{driver_data['name']}"><br>
-                    Email: <input type="text" name="email" value="{driver_data['email']}"><br>
-                    Phone: <input type="text" name="phone" value="{driver_data['phone']}"><br>
-                    Address: <input type="text" name="address" value="{driver_data['address']}"><br>
-                    License Number: <input type="text" name="license_number" value="{driver_data['license_number']}"><br>
-                    <button type="submit">Save Changes</button>
-                </form>
-            </body>
-            </html>
-            """
+      
         except Exception as e:
             cherrypy.log(f"Error displaying edit form: {e}")
             raise cherrypy.HTTPError(500, "Failed to display edit form")
@@ -284,9 +316,7 @@ class WebApp:
 
     @cherrypy.expose
     def delete_profile(self, driver_id):
-        """
-        Deletes the driver's profile (and any associated data if your catalog implements that).
-        """
+        
         try:
             
             url = f"http://127.0.0.1:8080/drivers/drivers?driver_id={driver_id}"
@@ -360,7 +390,7 @@ class WebApp:
         except Exception as e:
             cherrypy.log(f"Error rendering warehouse_login.html: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Internal Server Error")
-
+    '''
     @cherrypy.expose
     def warehouse_authenticate(self, warehouse_id):
         """Authenticate Warehouse by ID"""
@@ -383,9 +413,44 @@ class WebApp:
                 return "<h1>Warehouse not found. Please try again.</h1>"
         except Exception as e:
             cherrypy.log(f"Error authenticating warehouse: {e}", traceback=True)
-            raise cherrypy.HTTPError(500, "Failed to authenticate warehouse")
+            raise cherrypy.HTTPError(500, "Failed to authenticate warehouse")'''
+    @cherrypy.expose
+    def warehouse_authenticate(self,warehouse_email):
+        try:
+            url="http://127.0.0.1:8080/warehouses/warehouses"
+            cherrypy.log(f"Authenticating warehouse_email: {warehouse_email}")
+            response = requests.get(url, params={"warehouse_email": warehouse_email})
+            response.raise_for_status()
+            warehouse_data = response.json()
+            cherrypy.log(f"Warehouse data from catalog: {warehouse_data}")
+        # Ensure response contains valid warehouse details
+            if not warehouse_data:
+                cherrypy.log("No warehouse found with this email.")
+                return "<h1>No warehouse found with this email. Please try again.</h1>"
 
-   
+            # Extract warehouse_id from the response
+            warehouse_id = warehouse_data.get("_id")
+            if not warehouse_id:
+                cherrypy.log("warehouse ID missing in catalog response.")
+                return "<h1>Error retrieving warehouse information. Contact support.</h1>"
+
+            cherrypy.log(f"warehouse found: {warehouse_data}, warehouse ID: {warehouse_id}")
+
+            # Redirect to dashboard with the warehouse_id
+            redirect_url = f"/warehouse_dashboard?warehouse_id={warehouse_id}"
+            cherrypy.response.headers["Location"] = redirect_url
+            cherrypy.response.status = 303
+            return f'<html><body>Redirecting to <a href="{redirect_url}">dashboard</a>.</body></html>'
+        
+        except requests.exceptions.RequestException as req_err:
+            cherrypy.log(f"HTTP error when authenticating: {req_err}", traceback=True)
+            return "<h1>Failed to communicate with warehouse service. Please try again later.</h1>"
+        
+        except Exception as e:
+            cherrypy.log(f"Unexpected error during authentication: {e}", traceback=True)
+            return "<h1>An unexpected error occurred. Please try again.</h1>"
+        
+
 
     @cherrypy.expose
     def warehouse_dashboard(self, warehouse_id):
@@ -397,14 +462,29 @@ class WebApp:
             warehouse_response.raise_for_status()
             warehouse = warehouse_response.json()
             cherrypy.log(f"Warehouse data: {warehouse}")
-
+            
+             
             #  package history for the warehouse
             packages_url = f"http://127.0.0.1:8080/packages/packages"
             packages_response = requests.get(packages_url, params={"warehouse_id": warehouse_id})
             packages_response.raise_for_status()
             packages = packages_response.json()
             cherrypy.log(f"Package history data: {packages}")
+            # ✅ Extract package IDs from fetched packages
+            package_ids = [package["_id"] for package in packages]
+            cherrypy.log(f"Extracted Package IDs: {package_ids}")
 
+            # ✅ Fetch feedbacks related to the extracted package IDs
+            feedbacks = []
+            if package_ids:
+                feedback_url = f"http://127.0.0.1:8080/feedbacks/feedbacks"
+                #feedback_response = requests.get(feedback_url, params={"package_id": ",".join(package_ids)})
+                feedback_response = requests.get(feedback_url, params=[("package_id", pid) for pid in package_ids])
+                feedback_response.raise_for_status()
+                feedbacks = feedback_response.json()
+                cherrypy.log(f"Feedback data: {feedbacks}")
+
+            
             template = self.env.get_template('warehouse_dashboard.html')
             return template.render(
                 name=warehouse["name"],
@@ -413,8 +493,10 @@ class WebApp:
                 email=warehouse["email"],
                 reputation=warehouse["reputation"],
                 packages=packages,
+                feedbacks=feedbacks, 
                 warehouse_id=warehouse_id
             )
+            
         except Exception as e:
             cherrypy.log(f"Error rendering warehouse dashboard: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to load warehouse dashboard")
@@ -422,7 +504,7 @@ class WebApp:
     @cherrypy.expose
     def edit_warehouse(self, warehouse_id):
         """
-        Fetches the current warehouse data and displays a form to edit it.
+         displays a form to edit it
         """
         try:
             # current warehouse data from catalog
@@ -431,28 +513,10 @@ class WebApp:
             response.raise_for_status()
             warehouse_data = response.json()  # {"_id": ..., "name": ..., "address": {...}, ...}
 
-            
-            return f"""
-            <html>
-            <head><title>Edit Warehouse</title></head>
-            <body>
-                <h2>Edit Warehouse: {warehouse_data['name']}</h2>
-                <form action="/submit_edit_warehouse" method="post">
-                    <input type="hidden" name="warehouse_id" value="{warehouse_id}">
+            # Render the edit_warehouse.html template
+            template = self.env.get_template('edit_warehouse.html')
+            return template.render(warehouse=warehouse_data, warehouse_id=warehouse_id)
 
-                    Name: <input type="text" name="name" value="{warehouse_data['name']}"><br>
-                    Street: <input type="text" name="street" value="{warehouse_data['address']['street']}"><br>
-                    City: <input type="text" name="city" value="{warehouse_data['address']['city']}"><br>
-                    State: <input type="text" name="state" value="{warehouse_data['address']['state']}"><br>
-                    Zip: <input type="text" name="zip" value="{warehouse_data['address']['zip']}"><br>
-                    Phone: <input type="text" name="phone" value="{warehouse_data['phone']}"><br>
-                    Email: <input type="text" name="email" value="{warehouse_data['email']}"><br>
-
-                    <button type="submit">Save Changes</button>
-                </form>
-            </body>
-            </html>
-            """
         except Exception as e:
             cherrypy.log(f"Error displaying edit form for warehouse {warehouse_id}: {e}")
             raise cherrypy.HTTPError(500, "Failed to display edit form")
@@ -460,7 +524,7 @@ class WebApp:
     @cherrypy.expose
     def submit_edit_warehouse(self, warehouse_id, name, street, city, state, zip, phone, email):
         """
-        Submits the edited warehouse profile via PUT method to update the warehouse details in the catalog.
+        PUT method to update the warehouse details 
         """
         try:
             # updated warehouse data
@@ -497,7 +561,7 @@ class WebApp:
     @cherrypy.expose
     def delete_warehouse(self, warehouse_id):
         """
-        Deletes the warehouse profile from the catalog, along with any associated data if so implemented.
+        Deletes the warehouse profile 
         """
         try:
             
@@ -519,12 +583,12 @@ class WebApp:
             cherrypy.log(f"Unexpected error: {e}")
             raise cherrypy.HTTPError(500, "Unexpected error deleting warehouse")
     @cherrypy.expose
-    def register_package(self, warehouse_id, package_name, source, destination, weight, price, dimensions, delivery_address):
+    def register_package(self, warehouse_id, package_name, source, destination, weight,dimensions, delivery_address):
         """Register a new package"""
         try:
             # Log received input for debugging
             cherrypy.log(f"Received data: warehouse_id={warehouse_id}, package_name={package_name}, "
-                        f"source={source}, destination={destination}, weight={weight}, price={price}, dimensions={dimensions}, delivery_address={delivery_address}")
+                        f"source={source}, destination={destination}, weight={weight}, dimensions={dimensions}, delivery_address={delivery_address}")
 
             # dimensions (format: LxWxH)
             try:
@@ -540,7 +604,7 @@ class WebApp:
                 "source": source,
                 "destination": destination,
                 "weight": float(weight),  
-                "price": float(price),
+                #"price": float(price),
                 "dimensions": package_dimensions,
                 "delivery_address": delivery_address,  
                 "status": "in warehouse",
@@ -575,16 +639,17 @@ class WebApp:
                 "warehouse_id": warehouse_id,  
                 "timestamp": datetime.now().isoformat()  
             }
-
+             
             # Log feedback data for debugging
             cherrypy.log(f"Feedback data being submitted: {feedback_data}")
 
             # Send the feedback 
             response = requests.post(f"http://127.0.0.1:8080/feedbacks/feedbacks", json=feedback_data)
             response.raise_for_status()
-
-
+            
+            
             return f"<h1>Feedback submitted successfully for Package {package_id}!</h1>"
+            
         except requests.exceptions.RequestException as req_err:
             
             cherrypy.log(f"HTTP error when registering feedback: {req_err}", traceback=True)
@@ -593,11 +658,12 @@ class WebApp:
             #  unexpected errors
             cherrypy.log(f"Unexpected error registering feedback: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "An unexpected error occurred while submitting feedback")
-
+        
     @cherrypy.expose
     def search_package(self, package_id):
         """Search package by ID"""
         try:
+            
             url = f"http://127.0.0.1:8080/packages"
             response = requests.get(url, params={"package_id": package_id})
             response.raise_for_status()
@@ -610,7 +676,27 @@ class WebApp:
             cherrypy.log(f"Error searching package: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to search package")
 
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def get_warehouse_packages(self, warehouse_id):
+        """
+        Fetches the list of package IDs belonging to a warehouse.
+        """
+        try:
+            package_url = "http://127.0.0.1:8080/packages/packages"
+            response = requests.get(package_url, params={"warehouse_id": warehouse_id})
+            response.raise_for_status()
+            packages = response.json()
 
+            
+            package_data = [{"_id": pkg["_id"], "driver_id": pkg.get("driver_id", ""),"weight": pkg.get("weight", "")} for pkg in packages]
+
+        
+            return package_data
+
+        except requests.exceptions.RequestException as e:
+            cherrypy.log(f"Error fetching packages for warehouse {warehouse_id}: {e}")
+            return []
 
 
 

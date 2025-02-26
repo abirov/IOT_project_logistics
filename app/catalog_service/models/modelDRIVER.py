@@ -38,5 +38,5 @@ class Driver:
             license_number=data["license_number"],
             car_model=data["car_model"],
             _id=ObjectId(data.get("_id")),
-            vehicle_id=uuid.UUID(data.get("vehicle_id"))
+             vehicle_id=uuid.UUID(data.get("vehicle_id"))
         )

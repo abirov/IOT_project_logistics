@@ -115,7 +115,7 @@ class influxdbmanager:
 if __name__ == '__main__':
         influxdb = influxdbmanager('configinfluxdb.json')
         influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
-        location, vehicle_id = influxdb.get_location('vehicle9', '720')
+        location,  = influxdb.get_location('vehicle9', '720')
         print(location)
 #         location, vehicle_id = influxdb.get_location('vehicle11', '720')
 #         print(location)

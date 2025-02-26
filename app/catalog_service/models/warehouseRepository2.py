@@ -35,7 +35,13 @@ class WarehouseRepository:
             return Warehouse.from_dict(warehouse) if warehouse else None
         except Exception as e:
             raise Exception(f"Error retrieving warehouse by name: {str(e)}")
-        
+    def get_by_email(self, warehouse_email):
+        try:
+            warehouse = self.collection.find_one({'email': warehouse_email})
+            return Warehouse.from_dict(warehouse) if warehouse else None
+        except Exception as e:
+            raise Exception(f"Error retrieving warehouse by email: {str(e)}")
+         
 
     def update(self, warehouse_id, data):
         try:

@@ -34,7 +34,13 @@ class DriverRepository:
             return Driver.from_dict(driver) if driver else None
         except Exception as e:
             raise Exception(f"Error retrieving driver by name: {str(e)}")
-        
+    def get_by_email(self, driver_email):
+        try:
+            driver = self.collection.find_one({'email': driver_email})    
+            return Driver.from_dict(driver) if driver else None
+        except Exception as e:
+            raise Exception(f"Error retrieving driver by name: {str(e)}")
+            
     def update(self, driver_id, data):
         try:
             result = self.collection.update_one({'_id': (driver_id)}, {'$set': data})
