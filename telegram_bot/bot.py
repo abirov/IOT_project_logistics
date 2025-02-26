@@ -99,7 +99,7 @@ class RESTBot:
 
         if query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
-            self.bot.sendMessage(from_id, text="Please enter your Driver ID:")
+            self.bot.sendMessage(from_id, text="Please enter your Driver ID or Email:")
 
         elif query_data == "view_driver_details":
             self.send_driver_details(from_id)
@@ -155,11 +155,16 @@ class RESTBot:
 
         self.bot.answerCallbackQuery(query_id, text="")
 
-    def fetch_driver_details(self, chat_id, driver_id):
-        """Fetch driver details from `catalog2` API and store them."""
-        url = f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}"
+    def fetch_driver_details(self, chat_id, identifier):
+        """Fetch driver details from the catalog API and determine if the identifier is an email or driver ID."""
+        # Determine if the identifier is an email or a driver ID and construct the URL accordingly
+        if '@' in identifier:
+            url = f"{self.catalog_url}/drivers/drivers?driver_email={identifier}"
+        else:
+            url = f"{self.catalog_url}/drivers/drivers?driver_id={identifier}"
 
         try:
+           
             response = requests.get(url, timeout=5)
             logging.debug(f"📡 API Response Status: {response.status_code}")
 
@@ -168,25 +173,29 @@ class RESTBot:
                 logging.debug(f"👤 Driver Data: {driver}")
 
                 if driver:
+                    # Update the chat state and driver_id
                     self.chatIDs[chat_id] = {"state": "driver_logged_in", "driver_id": driver["_id"]}
 
+                   
                     welcome_message = f"👋 Welcome, **{driver['name']}**!"
-                    self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
-
                     keyboard = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="📝 View My Details", callback_data="view_driver_details")],
                         [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")],
-                        [InlineKeyboardButton(text="📂 My Panel", callback_data="driver_panel")] 
+                        [InlineKeyboardButton(text="📂 My Panel", callback_data="driver_panel")]
                     ])
+                    self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
                     self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
                 else:
-                    self.bot.sendMessage(chat_id, text="⚠️ No driver found with that ID.")
+                    
+                    self.bot.sendMessage(chat_id, text="⚠️ No driver found with that ID or email.")
             else:
+              
                 self.bot.sendMessage(chat_id, text="❌ Failed to fetch driver details.")
-
         except Exception as e:
+            # Log and handle exceptions during the HTTP request
             logging.error(f"❌ Error fetching driver details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred.")
+
 
     def send_driver_details(self, chat_id):
         """Fetch and display driver details when the user selects 'View My Details'."""
@@ -211,7 +220,7 @@ class RESTBot:
                         f"👨‍💼 Name: {driver['name']}\n"
                         f"📧 Email: {driver['email']}\n"
                         f"📞 Phone: {driver['phone']}\n"
-                        f"🚗 Vehicle: {driver.get('vehicle', 'Not provided')}\n"
+                        f"🚗 Vehicle: {driver.get('car_model', 'Not provided')}\n"
                     )
                     self.bot.sendMessage(chat_id, text=details, parse_mode="Markdown")
                 else:
