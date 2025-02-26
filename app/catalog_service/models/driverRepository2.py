@@ -83,3 +83,9 @@ class DriverRepository:
         except Exception as e:
             raise Exception(f"Error retrieving driver by package ID: {str(e)}")
         
+    def get_by_email(self, email):
+        try:
+            driver = self.collection.find_one({'email': email})
+            return Driver.from_dict(driver) if driver else None
+        except Exception as e:
+            raise Exception(f"Error retrieving driver by email: {str(e)}")

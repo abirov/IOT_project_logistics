@@ -34,6 +34,12 @@ class driverServer:
                 driver_name = params["driver_name"]
                 driver = self.driver_repo.get_by_name(driver_name)
                 return driver.to_dict() if driver else None
+            
+            elif "email" in params:
+                email = params["email"]
+                driver = self.driver_repo.get_by_email(email)
+                return driver.to_dict() if driver else None
+            
             # If a package ID is provided, get the driver by package ID
             elif "package_id" in params:
                 package_id = params["package_id"]
@@ -100,6 +106,10 @@ class warehouseServer:
             elif "warehouse_name" in params:
                 warehouse_name = params["warehouse_name"]
                 warehouse = self.warehouse_repo.get_by_name(warehouse_name)
+                return warehouse.to_dict() if warehouse else None
+            elif "email" in params:
+                email = params["email"]
+                warehouse = self.warehouse_repo.get_by_email(email)
                 return warehouse.to_dict() if warehouse else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")

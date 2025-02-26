@@ -62,4 +62,11 @@ class WarehouseRepository:
         except Exception as e:
             raise Exception(f"Error listing warehouses: {str(e)}")
         
+    def get_by_email(self, email):
+        try:
+            warehouse = self.collection.find_one({'email': email})
+            return Warehouse.from_dict(warehouse) if warehouse else None
+        except Exception as e:
+            raise Exception(f"Error retrieving warehouse by email: {str(e)}")
+        
     
