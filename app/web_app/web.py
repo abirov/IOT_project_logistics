@@ -478,7 +478,6 @@ class WebApp:
             feedbacks = []
             if package_ids:
                 feedback_url = f"http://127.0.0.1:8080/feedbacks/feedbacks"
-                #feedback_response = requests.get(feedback_url, params={"package_id": ",".join(package_ids)})
                 feedback_response = requests.get(feedback_url, params=[("package_id", pid) for pid in package_ids])
                 feedback_response.raise_for_status()
                 feedbacks = feedback_response.json()
