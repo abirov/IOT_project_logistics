@@ -1,9 +1,9 @@
-
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
+
 
 
 # Configure logging
@@ -80,6 +80,10 @@ class RESTBot:
         elif self.chatIDs[chat_id]["state"] == "awaiting_warehouse_id":
             self.fetch_warehouse_details(chat_id, message)
 
+        elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
+            print(f"📦 Fetching package details for ID: {message}")
+            self.track_package(chat_id, message)
+            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
 
         else:
             print("⚠️ Unsupported command received.")
@@ -95,9 +99,22 @@ class RESTBot:
             self.chatIDs[from_id] = {"state": None, "driver_id": None}
 
         if query_data == 'track_vehicle':
-            self.track_vehicle(from_id)  # Call a method to handle vehicle tracking
+            # Present options for tracking by Driver ID or Package ID
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
+                [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')]
+            ])
+            self.bot.sendMessage(from_id, "Select tracking method:", reply_markup=keyboard)
 
-        if query_data == 'enter_as_driver':
+        elif query_data == 'track_driver':
+            self.chatIDs[from_id]["state"] = "awaiting_driver_id"  # Set state for expecting driver ID
+            self.bot.sendMessage(from_id, text="Please enter the Driver ID:")
+
+        elif query_data == 'track_package':
+            self.chatIDs[from_id]["state"] = "awaiting_package_id"  # Set state for expecting package ID
+            self.bot.sendMessage(from_id, text="Please enter the Package ID:")
+
+        elif query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
             self.bot.sendMessage(from_id, text="Please enter your Driver ID or Email:")
 
@@ -108,7 +125,7 @@ class RESTBot:
             driver_id = self.chatIDs[from_id]["driver_id"]
             self.show_available_packages(from_id, driver_id)
 
-        elif query_data.startswith("pick_package_"):  
+        elif query_data.startswith("pick_package_"):
             package_id = query_data.replace("pick_package_", "")
             driver_id = self.chatIDs[from_id]["driver_id"]
             self.assign_package_to_driver(from_id, package_id, driver_id)
@@ -116,7 +133,7 @@ class RESTBot:
         elif query_data.startswith("change_status_"):
             package_id = query_data.replace("change_status_", "")
             self.change_package_status(from_id, package_id)
-        
+
         elif query_data == "driver_panel":
             driver_id = self.chatIDs[from_id]["driver_id"]
             self.driver_panel(from_id, driver_id)
@@ -124,27 +141,24 @@ class RESTBot:
         elif query_data.startswith("confirm_delivery_"):
             package_id = query_data.replace("confirm_delivery_", "")
             self.confirm_package_delivery(from_id, package_id)
-        
+
         elif query_data.startswith("reassign_order_"):
             data = query_data.split("_")
             package_id = data[2]
             package_name = '_'.join(data[3:])  # Since package names might contain underscores, join the rest
-
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Yes, Reassign", callback_data=f"confirm_reassign_{package_id}")],
                 [InlineKeyboardButton(text="❌ No, Cancel", callback_data="cancel_action")]
             ])
-
             # Send a confirmation message including the package name
             self.bot.sendMessage(from_id, text=f"⚠️ Are you sure you want to reassign the package '{package_name}'?", reply_markup=keyboard)
 
         elif query_data.startswith("confirm_reassign_"):
             package_id = query_data.split("_")[2]
-            self.cancel_package_assignment(from_id, package_id)  
+            self.cancel_package_assignment(from_id, package_id)
 
         elif query_data == "cancel_action":
             self.bot.sendMessage(from_id, text="❌ Action canceled.")
-
 
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
@@ -518,7 +532,21 @@ class RESTBot:
         except requests.RequestException as e:
             return f"Error fetching package details: {str(e)}"
 
-
+    def get_driver_info(self, driver_id):
+        """Fetch driver details from the API and return a formatted string."""
+        driver_url = f"http://127.0.0.1:8080/drivers/drivers?driver_id={driver_id}"
+        try:
+            response = requests.get(driver_url, timeout=5)
+            if response.status_code == 200:
+                driver_data = response.json()
+                driver_id_value = driver_data.get("_id", "N/A")
+                driver_name = driver_data.get("name", "N/A")
+                return f"ID: {driver_id_value}, Name: {driver_name}"
+            else:
+                return "Driver information not available."
+        except Exception as e:
+            print(f"Error fetching driver info: {str(e)}")
+            return "Driver information not available due to an error."
 
     def get_warehouse_details(self, warehouse_id):
         """Fetches and formats warehouse details from the catalog API using the warehouse ID."""
@@ -535,7 +563,6 @@ class RESTBot:
         except requests.RequestException as e:
             logging.error(f"Error fetching warehouse details: {str(e)}")
             return "Warehouse details not available."
-
 
 
     def fetch_warehouse_details(self, chat_id, warehouse_id):
@@ -642,6 +669,91 @@ class RESTBot:
         # Send the URL as a clickable link in a message
         #self.bot.sendMessage(chat_id, text=f"View the location on Google Maps: {map_url}", disable_web_page_preview=True)
 
+    def track_driver(self, chat_id, driver_id):
+        # Implement driver tracking logic here
+        print(f"Tracking driver with ID: {driver_id}")
+        # Fetch driver details and send to user...
+        self.bot.sendMessage(chat_id, text="Driver location: [Location Details Here]")
+
+
+    
+
+    def track_package(self, chat_id, package_id):
+        """Fetch and display package details using the package ID."""
+        print(f"📦 Fetching package details for Package ID: {package_id}")
+        package_details = self.fetch_package_details(package_id)
+        reply_markup = None  # default, no keyboard
+        
+        # Check if the package is delivered by examining the status in the formatted details
+        if package_details and "🚦 *status:* delivered" in package_details.lower():
+            # Re-fetch the package JSON to extract additional delivery info
+            url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+            try:
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    package_json = response.json()
+                    driver_id = package_json.get("driver_id", None)
+                    driver_info = ""
+                    if driver_id:
+                        # Use the get_driver_info method which returns a string like:
+                        # "ID: 675897aebdb7c9ebe2fa26ce, Name: Jane Cristina"
+                        raw_driver_info = self.get_driver_info(driver_id)
+                        parts = raw_driver_info.split(", ")
+                        if len(parts) == 2:
+                            driver_id_value = parts[0].split(": ")[1] if ": " in parts[0] else parts[0]
+                            driver_name_value = parts[1].split(": ")[1] if ": " in parts[1] else parts[1]
+                            driver_info = f"\n*ID:* {driver_id_value}\n*Name:* {driver_name_value}"
+                        else:
+                            driver_info = f"\n{raw_driver_info}"
+                    package_details += f"\n\nThe package was *delivered* by driver:{driver_info}."
+                else:
+                    package_details += "\n\nThe package is marked as delivered, but delivery details are not available."
+            except Exception as e:
+                print(f"Error fetching delivery details: {str(e)}")
+                package_details += "\n\nAn error occurred while fetching delivery details."
+        
+        # New branch: Check for the "in transit" status
+        elif package_details and "🚦 *status:* in transit" in package_details.lower():
+            # Re-fetch the package JSON to extract additional transit info (driver info)
+            url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
+            try:
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    package_json = response.json()
+                    driver_id = package_json.get("driver_id", None)
+                    driver_info = ""
+                    if driver_id:
+                        raw_driver_info = self.get_driver_info(driver_id)
+                        parts = raw_driver_info.split(", ")
+                        if len(parts) == 2:
+                            driver_id_value = parts[0].split(": ")[1] if ": " in parts[0] else parts[0]
+                            driver_name_value = parts[1].split(": ")[1] if ": " in parts[1] else parts[1]
+                            driver_info = f"\n*ID:* {driver_id_value}\n*Name:* {driver_name_value}"
+                        else:
+                            driver_info = f"\n{raw_driver_info}"
+                    package_details += f"\n\nPackage is *in transit* by driver:{driver_info}."
+                    # Create inline keyboard with a "Track on the map" button
+                    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="Track on the map", callback_data=f"track_on_map_{package_id}")]
+                    ])
+                else:
+                    package_details += "\n\nThe package is marked as in transit, but transit details are not available."
+            except Exception as e:
+                print(f"Error fetching transit details: {str(e)}")
+                package_details += "\n\nAn error occurred while fetching transit details."
+        
+        # Check for the "in warehouse" status as before
+        elif package_details and "🚦 *status:* in warehouse" in package_details.lower():
+            package_details += "\n\nThe package is currently *in our warehouse*, awaiting pickup by a driver."
+        
+        # Send the package details if they exist, otherwise show an error
+        if package_details:
+            if reply_markup:
+                self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown", reply_markup=reply_markup)
+            else:
+                self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
+        else:
+            self.bot.sendMessage(chat_id, text="Failed to fetch package details. Please check the Package ID and try again.")
 
 
 if __name__ == "__main__":
