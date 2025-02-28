@@ -48,6 +48,28 @@ class FeedbackRepository:
         except Exception as e:
             raise Exception(f"Error retrieving feedback by driver ID: {str(e)}")
         
+
+
+    def get_by_package_ids(self, package_ids):
+        """Retrieve feedbacks for multiple packages."""
+        try:
+            # ✅ Ensure package_ids is a list
+            if isinstance(package_ids, str):
+                package_ids_list = package_ids.split(",")  # Convert comma-separated IDs into a list
+            elif isinstance(package_ids, list):
+                package_ids_list = package_ids  # Already a list, no need to split
+            else:
+                raise ValueError("Invalid package_ids format")
+
+            query = {"package_id": {"$in": package_ids_list}}
+            feedbacks = list(self.collection.find(query))
+            return [Feedback.from_dict(feedback) for feedback in feedbacks]
+
+        except Exception as e:
+            raise Exception(f"Error retrieving feedbacks: {str(e)}")
+            
+        
+            
     def get_by_warehouse_id(self, warehouse_id):
         try:
             feedback = self.collection.find_one({'warehouse_id':(warehouse_id)})
