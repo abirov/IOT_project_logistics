@@ -43,27 +43,33 @@ class influxdbmanager:
 
 
     def get_location(self, vehicle_id, period):
-        query = f"""
-        from(bucket: "{self.influxdb_bucket}")
-            |> range(start: -{period})
-            |> filter(fn: (r) => r["_measurement"] == "vehicle" and r["vehicle_id"] == "{vehicle_id}")
-            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-            |> keep(columns: ["_time", "latitude", "longitude"])
-            |> sort(columns: ["_time"], desc: true)
-        """
-        tables = self.query_api.query(query)
         
+        #Returns a pandas DataFrame of all points for vehicle_id 
+        #in the last `period` 
+      
+        query = f'''
+        from(bucket: "{self.influxdb_bucket}")
+          |> range(start: -{period})
+          |> filter(fn: (r) => r["_measurement"] == "LOCATION" and r["vehicle_id"] == "{vehicle_id}")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+          |> keep(columns: ["_time", "latitude", "longitude"])
+          |> sort(columns: ["_time"], desc: true)
+        '''
+        tables = self.query_api.query(query)
+
         result = []
         for table in tables:
             for record in table.records:
                 result.append({
-                    "time": record['_time'].isoformat(),
-                    "latitude": float(record['latitude']),
-                    "longitude": float(record['longitude'])
+                    "time": record["_time"].isoformat(),
+                    "latitude": float(record["latitude"]),
+                    "longitude": float(record["longitude"])
                 })
 
-        location_df = pd.DataFrame(result)
-        return location_df, vehicle_id
+        df = pd.DataFrame(result)
+        print(f"DEBUG get_location('{vehicle_id}','{period}') → {len(df)} rows")  # <— debug
+        return df
+
     
     def get_vehicle_by_location(self, latitude, longitude, period):
         latitude = float(latitude)
@@ -113,11 +119,11 @@ class influxdbmanager:
         print("InfluxDB connection closed")
 
 
-if __name__ == '__main__':
-        influxdb = influxdbmanager('configinfluxdb.json')
-        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
-        location, vehicle_id = influxdb.get_location('vehicle9', '720')
-        print(location)
+#if __name__ == '__main__':
+       # influxdb = influxdbmanager('configinfluxdb.json')
+        #influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
+        #location, vehicle_id = influxdb.get_location('vehicle9', '720')
+        #print(location)
 #         location, vehicle_id = influxdb.get_location('vehicle11', '720')
 #         print(location)
 #         # columns = location.columns
