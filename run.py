@@ -6,13 +6,13 @@ def run_services():
         "app\DB_service\influxservice.py",
         "telegram_bot/Bot.py",
         
-        # "app/reputation_service/reputation.py",
+        "app/reputation_service/reputation.py",
 
         "app\DB_service\mqtt_service.py",
         "app\simulation_service\Test_simulation.py",
 
 
-        #"app/web_app/web.py",
+        "app/web_app/web.py",
           
         
     ]
