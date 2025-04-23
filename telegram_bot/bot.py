@@ -31,19 +31,47 @@ class RESTBot:
 
         print(f"🔹 Message received: {message} from {chat_id}")  
 
-        if chat_id not in self.chatIDs:
-            self.chatIDs[chat_id] = {"state": None, "driver_id": None}
 
-        #Shortcuts dictionary
-        shortcuts = {
-            "s": "/start", "st": "/start", "sta": "/start", "star": "/start",
-            "d": "/driver_details", "de": "/driver_details", "det": "/driver_details",
-            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel", "pane": "/panel"
+
+
+            #Shortcuts dictionary
+        driver_shortcuts = {
+            "d": "/driver_details",   "de": "/driver_details",  "det": "/driver_details",
+            "p": "/pick_package",     "pa": "/pick_package",    "pan": "/panel",
+           
         }
+        warehouse_shortcuts = {
+            "w": "/warehouse_details", "wa": "/warehouse_details", "war": "/warehouse_details",
+            "t": "/tracking_packages",  "tr": "/tracking_packages",  "tra": "/tracking_packages" ,   
+    
+        }
+       
+       
+        if chat_id not in self.chatIDs:
+            self.chatIDs[chat_id] = {
+                "state": None,
+                "driver_id": None,
+                "warehouse_id": None,
+                "role": None,
+            }
+
+
+        role = self.chatIDs[chat_id].get("role")    # either "driver", "warehouse", or None
+        if role == "driver":
+            shortcuts = driver_shortcuts
+        elif role == "warehouse":
+            shortcuts = warehouse_shortcuts
+        else:
+            shortcuts = {}   # no shortcuts until they pick a role
+
+        
+        if message in shortcuts:
+           message = shortcuts[message]
+
 
         #Convert shortcut message to full command
-        if message in shortcuts:
-            message = shortcuts[message]  # Replace the shortcut with the full command
+        #if message in shortcuts:
+            #message = shortcuts[message]  # Replace the shortcut with the full command
 
 
 
@@ -76,11 +104,35 @@ class RESTBot:
             else:
                  self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
+        elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
+            print(f"📦 Fetching package details for ID: {message}")
+            self.track_package(chat_id, message)
+            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
+            
+
+        elif message == "/warehouse_details":
+            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            if warehouse_id:
+                self.send_warehouse_details(chat_id)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
+        elif message == "/tracking_packages":
+            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            if warehouse_id:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    #[InlineKeyboardButton(text="Tracking by Driver ID",  callback_data='track_driver')],
+                    [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')],
+                ])
+                self.bot.sendMessage(chat_id, text="Select tracking method:", reply_markup=keyboard)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
          # —— Tracking by Driver ID (separate from login) ——
-        elif self.chatIDs[chat_id]["state"] == "awaiting_track_driver_id":
-            driver_id = message
-            self.chatIDs[chat_id]["state"] = None
-            self.track_driver(chat_id, driver_id)
+        #elif self.chatIDs[chat_id]["state"] == "awaiting_track_driver_id":
+            #driver_id = message
+            #self.chatIDs[chat_id]["state"] = None
+            #self.track_driver(chat_id, driver_id)
 
         # —— Tracking by Package ID (separate from pickup) ——
         elif self.chatIDs[chat_id]["state"] == "awaiting_track_package_id":
@@ -94,11 +146,6 @@ class RESTBot:
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_warehouse_id":
             self.fetch_warehouse_details(chat_id, message)
-
-        elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
-            print(f"📦 Fetching package details for ID: {message}")
-            self.track_package(chat_id, message)
-            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
 
         else:
             print("⚠️ Unsupported command received.")
@@ -116,14 +163,14 @@ class RESTBot:
         if query_data == 'track_vehicle':
             # Present options for tracking by Driver ID or Package ID
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
+                #[InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
                 [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')]
             ])
             self.bot.sendMessage(from_id, "Select tracking method:", reply_markup=keyboard)
 
-        elif query_data == 'track_driver':
-            self.chatIDs[from_id]["state"] = "awaiting_track_driver_id"
-            self.bot.sendMessage(from_id, text="Please enter the Driver ID to track:")
+        #elif query_data == 'track_driver':
+            #self.chatIDs[from_id]["state"] = "awaiting_track_driver_id"
+            #self.bot.sendMessage(from_id, text="Please enter the Driver ID to track:")
 
         elif query_data == 'track_package':
             self.chatIDs[from_id]["state"] = "awaiting_track_package_id"
@@ -133,6 +180,7 @@ class RESTBot:
 
         elif query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
+            self.chatIDs[from_id]["role"]  = "driver"
             self.bot.sendMessage(from_id, text="Please enter your Driver ID or Email:")
 
         elif query_data == "view_driver_details":
@@ -179,6 +227,7 @@ class RESTBot:
 
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
+            self.chatIDs[from_id]["role"]  = "warehouse"
             self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
 
         elif query_data == "view_warehouse_details":
@@ -611,39 +660,43 @@ class RESTBot:
             return "Warehouse details not available."
 
 
-    def fetch_warehouse_details(self, chat_id, warehouse_id):
-        """Fetch warehouse details from the catalog API."""
-        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
-  
+    def fetch_warehouse_details(self, chat_id, identifier):
+        """Fetch warehouse details from the catalog API using ID or email."""
+        if '@' in identifier:
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_email={identifier}"
+        else:
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={identifier}"
+
         try:
             response = requests.get(url, timeout=5)
+            logging.debug(f"📡 API Response Status (Warehouse): {response.status_code}")
 
             if response.status_code == 200:
                 warehouse = response.json()
+                logging.debug(f"🏢 Warehouse Data: {warehouse}")
 
                 if warehouse:
-                   self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
+                    self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
 
-                   # Send welcome message
-                   welcome_message = f"🏢 Welcome to *{warehouse['name']}*!\n"
-                   self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
+                    welcome_message = f"🏢 Welcome to *{warehouse['name']}*!\n"
+                    self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
 
-                   # Show options
-                   keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                       [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
-                       [InlineKeyboardButton(text="📦 Tracking", callback_data="track_vehicle")]
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
+                        [InlineKeyboardButton(text="📦 Track Packages", callback_data="track_vehicle")]
                     ])
-                   self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
+                    self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
 
                 else:
-                    self.bot.sendMessage(chat_id, text="⚠️ No warehouse found with that ID.")
-
+                    self.bot.sendMessage(chat_id, text="⚠️ No warehouse found with that ID or email.")
             else:
                 self.bot.sendMessage(chat_id, text="❌ Failed to fetch warehouse details.")
-
         except Exception as e:
             logging.error(f"❌ Error fetching warehouse details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred.")
+
+
+
 
     def send_warehouse_details(self, chat_id):
         """Fetch and display warehouse details."""
