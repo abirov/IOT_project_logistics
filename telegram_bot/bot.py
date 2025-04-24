@@ -4,6 +4,7 @@ from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
+import json  
 
 
 
@@ -11,9 +12,11 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 class RESTBot:
-    def __init__(self, token, catalog_url):
+    def __init__(self, token, catalog_url, influx_api_url, google_maps_key):
         self.tokenBot = token
         self.catalog_url = catalog_url  # Base URL for catalog API
+        self.influx_api_url  = influx_api_url #InfluxDB REST base URL
+        self.google_maps_key = google_maps_key
         self.bot = telepot.Bot(self.tokenBot)
         self.chatIDs = {}
 
@@ -28,19 +31,47 @@ class RESTBot:
 
         print(f"🔹 Message received: {message} from {chat_id}")  
 
-        if chat_id not in self.chatIDs:
-            self.chatIDs[chat_id] = {"state": None, "driver_id": None}
 
-        #Shortcuts dictionary
-        shortcuts = {
-            "s": "/start", "st": "/start", "sta": "/start", "star": "/start",
-            "d": "/driver_details", "de": "/driver_details", "det": "/driver_details",
-            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel", "pane": "/panel"
+
+
+            #Shortcuts dictionary
+        driver_shortcuts = {
+            "d": "/driver_details",   "de": "/driver_details",  "det": "/driver_details",
+            "p": "/pick_package",     "pa": "/pick_package",    "pan": "/panel",
+           
         }
+        warehouse_shortcuts = {
+            "w": "/warehouse_details", "wa": "/warehouse_details", "war": "/warehouse_details",
+            "t": "/tracking_packages",  "tr": "/tracking_packages",  "tra": "/tracking_packages" ,   
+    
+        }
+       
+       
+        if chat_id not in self.chatIDs:
+            self.chatIDs[chat_id] = {
+                "state": None,
+                "driver_id": None,
+                "warehouse_id": None,
+                "role": None,
+            }
+
+
+        role = self.chatIDs[chat_id].get("role")    # either "driver", "warehouse", or None
+        if role == "driver":
+            shortcuts = driver_shortcuts
+        elif role == "warehouse":
+            shortcuts = warehouse_shortcuts
+        else:
+            shortcuts = {}   # no shortcuts until they pick a role
+
+        
+        if message in shortcuts:
+           message = shortcuts[message]
+
 
         #Convert shortcut message to full command
-        if message in shortcuts:
-            message = shortcuts[message]  # Replace the shortcut with the full command
+        #if message in shortcuts:
+            #message = shortcuts[message]  # Replace the shortcut with the full command
 
 
 
@@ -73,6 +104,41 @@ class RESTBot:
             else:
                  self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
+        elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
+            print(f"📦 Fetching package details for ID: {message}")
+            self.track_package(chat_id, message)
+            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
+            
+
+        elif message == "/warehouse_details":
+            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            if warehouse_id:
+                self.send_warehouse_details(chat_id)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
+        elif message == "/tracking_packages":
+            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            if warehouse_id:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    #[InlineKeyboardButton(text="Tracking by Driver ID",  callback_data='track_driver')],
+                    [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')],
+                ])
+                self.bot.sendMessage(chat_id, text="Select tracking method:", reply_markup=keyboard)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+
+         # —— Tracking by Driver ID (separate from login) ——
+        #elif self.chatIDs[chat_id]["state"] == "awaiting_track_driver_id":
+            #driver_id = message
+            #self.chatIDs[chat_id]["state"] = None
+            #self.track_driver(chat_id, driver_id)
+
+        # —— Tracking by Package ID (separate from pickup) ——
+        elif self.chatIDs[chat_id]["state"] == "awaiting_track_package_id":
+            package_id = message
+            self.chatIDs[chat_id]["state"] = None
+            self.track_package(chat_id, package_id)
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_driver_id":
             print(f"📡 Fetching driver details for ID: {message}")
@@ -80,11 +146,6 @@ class RESTBot:
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_warehouse_id":
             self.fetch_warehouse_details(chat_id, message)
-
-        elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
-            print(f"📦 Fetching package details for ID: {message}")
-            self.track_package(chat_id, message)
-            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
 
         else:
             print("⚠️ Unsupported command received.")
@@ -102,21 +163,24 @@ class RESTBot:
         if query_data == 'track_vehicle':
             # Present options for tracking by Driver ID or Package ID
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
+                #[InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
                 [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')]
             ])
             self.bot.sendMessage(from_id, "Select tracking method:", reply_markup=keyboard)
 
-        elif query_data == 'track_driver':
-            self.chatIDs[from_id]["state"] = "awaiting_driver_id"  # Set state for expecting driver ID
-            self.bot.sendMessage(from_id, text="Please enter the Driver ID:")
+        #elif query_data == 'track_driver':
+            #self.chatIDs[from_id]["state"] = "awaiting_track_driver_id"
+            #self.bot.sendMessage(from_id, text="Please enter the Driver ID to track:")
 
         elif query_data == 'track_package':
-            self.chatIDs[from_id]["state"] = "awaiting_package_id"  # Set state for expecting package ID
-            self.bot.sendMessage(from_id, text="Please enter the Package ID:")
+            self.chatIDs[from_id]["state"] = "awaiting_track_package_id"
+            self.bot.sendMessage(from_id, text="Please enter the Package ID to track:")
+
+
 
         elif query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
+            self.chatIDs[from_id]["role"]  = "driver"
             self.bot.sendMessage(from_id, text="Please enter your Driver ID or Email:")
 
         elif query_data == "view_driver_details":
@@ -163,10 +227,40 @@ class RESTBot:
 
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
+            self.chatIDs[from_id]["role"]  = "warehouse"
             self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
 
         elif query_data == "view_warehouse_details":
             self.send_warehouse_details(from_id)
+
+
+        elif query_data.startswith("track_on_map_"):
+            # strip the 13‑char prefix "track_on_map_"
+            package_id = query_data[len("track_on_map_"):]
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔗 Google Maps Link", callback_data=f"map_link_{package_id}")],
+                [InlineKeyboardButton(text="🖼  Static Map Image", callback_data=f"map_static_{package_id}")],
+            ])
+            self.bot.sendMessage(from_id, "How would you like to view it?", reply_markup=keyboard)
+
+        elif query_data.startswith("map_link_"):
+            # strip the 9‑char prefix "map_link_"
+            package_id = query_data[len("map_link_"):]
+            self._send_maps_link(from_id, package_id)
+
+        elif query_data.startswith("map_static_"):
+            # strip the 11‑char prefix "map_static_"
+            package_id = query_data[len("map_static_"):]
+            self._send_static_map(from_id, package_id)
+
+        else:
+            self.bot.sendMessage(from_id, text="❓ I didn't understand that action.")
+
+        # clear Telegram’s loading spinner
+        self.bot.answerCallbackQuery(query_id, text="")
+
+
+
 
         self.bot.answerCallbackQuery(query_id, text="")
 
@@ -566,39 +660,43 @@ class RESTBot:
             return "Warehouse details not available."
 
 
-    def fetch_warehouse_details(self, chat_id, warehouse_id):
-        """Fetch warehouse details from the catalog API."""
-        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
-  
+    def fetch_warehouse_details(self, chat_id, identifier):
+        """Fetch warehouse details from the catalog API using ID or email."""
+        if '@' in identifier:
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_email={identifier}"
+        else:
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={identifier}"
+
         try:
             response = requests.get(url, timeout=5)
+            logging.debug(f"📡 API Response Status (Warehouse): {response.status_code}")
 
             if response.status_code == 200:
                 warehouse = response.json()
+                logging.debug(f"🏢 Warehouse Data: {warehouse}")
 
                 if warehouse:
-                   self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
+                    self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
 
-                   # Send welcome message
-                   welcome_message = f"🏢 Welcome to *{warehouse['name']}*!\n"
-                   self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
+                    welcome_message = f"🏢 Welcome to *{warehouse['name']}*!\n"
+                    self.bot.sendMessage(chat_id, text=welcome_message, parse_mode="Markdown")
 
-                   # Show options
-                   keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                       [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
-                       [InlineKeyboardButton(text="📦 Tracking", callback_data="track_vehicle")]
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
+                        [InlineKeyboardButton(text="📦 Track Packages", callback_data="track_vehicle")]
                     ])
-                   self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
+                    self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
 
                 else:
-                    self.bot.sendMessage(chat_id, text="⚠️ No warehouse found with that ID.")
-
+                    self.bot.sendMessage(chat_id, text="⚠️ No warehouse found with that ID or email.")
             else:
                 self.bot.sendMessage(chat_id, text="❌ Failed to fetch warehouse details.")
-
         except Exception as e:
             logging.error(f"❌ Error fetching warehouse details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred.")
+
+
+
 
     def send_warehouse_details(self, chat_id):
         """Fetch and display warehouse details."""
@@ -756,14 +854,166 @@ class RESTBot:
         else:
             self.bot.sendMessage(chat_id, text="Failed to fetch package details. Please check the Package ID and try again.")
 
+    def _send_maps_link(self, chat_id, package_id):
+        
+        print(f"[DEBUG] ▶️ Start _send_maps_link for package_id={package_id}")
+
+        # 1) Get driver_id from package
+        pkg_resp = requests.get(
+            f"{self.catalog_url}/packages/packages?package_id={package_id}",
+            timeout=5
+        )
+        print(f"[DEBUG] pkg HTTP {pkg_resp.status_code}: {pkg_resp.text}")
+        try:
+            pkg = pkg_resp.json()
+        except ValueError as e:
+            print(f"[ERROR] cannot parse pkg JSON: {e}")
+            return self.bot.sendMessage(chat_id, "❌ Failed to parse package response.")
+
+        driver_id = pkg.get("driver_id")
+        print(f"[DEBUG] driver_id = {driver_id!r}")
+        if not driver_id:
+            return self.bot.sendMessage(chat_id, "❌ That package has no driver assigned.")
+
+        # 2) Get vehicle_id from driver record
+        drv_resp = requests.get(
+            f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}",
+            timeout=5
+        )
+        print(f"[DEBUG] drv HTTP {drv_resp.status_code}: {drv_resp.text}")
+        try:
+            drv = drv_resp.json()
+        except ValueError as e:
+            print(f"[ERROR] cannot parse driver JSON: {e}")
+            return self.bot.sendMessage(chat_id, "❌ Failed to parse driver response.")
+
+        vehicle_id = drv.get("vehicle_id")
+        print(f"[DEBUG] vehicle_id = {vehicle_id!r}")
+        if not vehicle_id:
+            return self.bot.sendMessage(chat_id, "❌ No vehicle_id found for that driver.")
+
+        # 3) get Influx data
+        influx_resp = requests.get(
+            f"{self.influx_api_url}/location",
+            params={"vehicle_id": vehicle_id, "period": "1000h"},
+            timeout=5
+        )
+        print(f"[DEBUG] influx HTTP {influx_resp.status_code}: {influx_resp.text[:200]}…")
+        pts = influx_resp.text
+        # handle possible string payload
+        if isinstance(pts, str):
+            try:
+                pts = json.loads(pts)
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] cannot decode influx JSON: {e}")
+                return self.bot.sendMessage(chat_id, "❌ Unexpected response format from location service.")
+        print(f"[DEBUG] parsed pts list length = {len(pts) if isinstance(pts, list) else 'not a list'}")
+
+        if not pts:
+            return self.bot.sendMessage(chat_id, "ℹ️ No location data stored yet.")
+
+        # 4) Newest point is first element
+        latest = pts[0]
+        print(f"[DEBUG] latest point = {latest}")
+        lat, lon = latest.get("latitude"), latest.get("longitude")
+        print(f"[DEBUG] lat, lon = {lat}, {lon}")
+
+        # 5) Send live Google Maps link
+        maps_link = f"https://www.google.com/maps?q={lat},{lon}"
+        self.bot.sendMessage(
+            chat_id,
+            f"🔗 Last stored location of package *{package_id}*:\n"
+            f"`{lat:.6f}, {lon:.6f}`\n"
+            f"[Open in Google Maps]({maps_link})",
+            parse_mode="Markdown"
+        )
+        print("[DEBUG] ✅ map link sent")
+
+
+
+    def _send_static_map(self, chat_id, package_id):
+        """
+        1) Fetch package → driver_id
+        2) Fetch driver  → vehicle_id
+     
+        """
+        # 1) Get driver_id from package
+        pkg = requests.get(
+            f"{self.catalog_url}/packages/packages?package_id={package_id}",
+            timeout=5
+        ).json()
+        driver_id = pkg.get("driver_id")
+        if not driver_id:
+            return self.bot.sendMessage(chat_id,
+                "❌ That package has no driver assigned.")
+
+        # 2) Get vehicle_id from driver
+        drv = requests.get(
+            f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}",
+            timeout=5
+        ).json()
+        vehicle_id = drv.get("vehicle_id")
+        if not vehicle_id:
+            return self.bot.sendMessage(chat_id,
+                "❌ No vehicle_id found for that driver.")
+
+        # 3) Fetch Influx data
+        resp = requests.get(
+            f"{self.influx_api_url}/location",
+            params={"vehicle_id": vehicle_id, "period": "10000h"},
+            timeout=5
+        )
+        pts = resp.json()
+
+        # unwrap stringified JSON if necessary
+        if isinstance(pts, str):
+            try:
+                pts = json.loads(pts)
+            except json.JSONDecodeError:
+                return self.bot.sendMessage(chat_id, "❌ Unexpected format from location service.")
+
+        if not pts:
+            return self.bot.sendMessage(chat_id, "ℹ️ No location data stored yet.")
+
+
+        # 4) Extract newest coords
+        lat, lon = pts[0]["latitude"], pts[0]["longitude"]
+
+        # 5) Build Static Map URL
+        static_url = (
+            "https://maps.googleapis.com/maps/api/staticmap"
+            f"?center={lat},{lon}&zoom=15&size=600x300"
+            f"&markers=color:red|label:P|{lat},{lon}"
+            f"&key={self.google_maps_key}"
+        )
+        img_data = requests.get(static_url, timeout=5).content
+
+        # 6) Save & send the image
+        temp_path = "pkg_loc.png"
+        with open(temp_path, "wb") as f:
+            f.write(img_data)
+        with open(temp_path, "rb") as f:
+            self.bot.sendPhoto(
+                chat_id,
+                f,
+                caption=f"🖼 Last stored location of package *{package_id}*",
+                parse_mode="Markdown"
+            )
+
 
 if __name__ == "__main__":
     TELEGRAM_BOT_TOKEN = "8159489225:AAGd897nlIv2JkkBuYwfyNXt4nAs15ILUNA"  # Replace with your actual bot token
-    CATALOG2_API_URL = "http://127.0.0.1:8080"
+    CATALOG2_API_URL   = "http://127.0.0.1:8080"
+    INFLUX_API_URL     = "http://localhost:8084"
+    GOOGLE_MAPS_KEY    = "AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
 
-    bot = RESTBot(TELEGRAM_BOT_TOKEN, CATALOG2_API_URL)
+    bot = RESTBot(
+        TELEGRAM_BOT_TOKEN,
+        CATALOG2_API_URL,
+        INFLUX_API_URL,
+        GOOGLE_MAPS_KEY
+    )
 
-    # Keep the bot running
     print("🤖 Bot is running. Press Ctrl+C to exit.")
     while True:
         pass
