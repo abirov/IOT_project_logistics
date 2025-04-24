@@ -1,63 +1,57 @@
 import cherrypy
 import cherrypy_cors
+import json
 from DBconnectore3 import influxdbmanager
 
+
 class influxconnectoreServer:
-    exposed = True  
+    exposed = True  # Required when using MethodDispatcher
+
     def __init__(self):
         self.influxdb = influxdbmanager('configinfluxdb.json')
     
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
-        if not uri:
-            return {"error": "Invalid URI"}
-
-        endpoint = uri[0]
-
-        
-        #    Returns the timestamped lat/lon history for a single vehicle over the past period (e.g. '2h')
-        #    Params: vehicle_id, period
-        if endpoint == 'location':
+        if uri and uri[0] == 'location':
             vehicle_id = params.get('vehicle_id')
-            period     = params.get('period')
-            if not vehicle_id or not period:
+            period = params.get('period')
+            if vehicle_id and period:
+                location = self.influxdb.get_location(vehicle_id, period)
+                location_json = location.to_json(orient='columns')
+                return location_json
+            else:
                 return {"error": "Missing vehicle_id or period parameter"}
-            df = self.influxdb.get_location(vehicle_id, period)
-            # return a Python list of dicts
-            return df.to_dict(orient='records')
 
-        # Finds any vehicle points whose latitude >= `latitude` AND longitude >= `longitude`
-        # within the last period
-        # Params: latitude, longitude, period
-        elif endpoint == 'vehicle':
-            lat    = params.get('latitude')
-            lon    = params.get('longitude')
+        elif uri and uri[0] == 'vehicle':
+            latitude = params.get('latitude')
+            longitude = params.get('longitude')
             period = params.get('period')
-            if not lat or not lon or not period:
+            if latitude and longitude and period:
+                vehicle = self.influxdb.get_vehicle_by_location(latitude, longitude, period)
+                vehicle_json = vehicle.to_json(orient='columns')
+                return vehicle_json
+            else:
                 return {"error": "Missing latitude, longitude, or period parameter"}
-            df = self.influxdb.get_vehicle_by_location(lat, lon, period)
-            return df.to_dict(orient='records')
 
-        #Returns all vehicle points that fall inside the box defined by:
-        #      min_latitude ≤ lat ≤ max_latitude
-        #      min_longitude ≤ lon ≤ max_longitude
-       
-        elif endpoint == 'vehicles':
-            min_lat = params.get('min_latitude')
-            max_lat = params.get('max_latitude')
-            min_lon = params.get('min_longitude')
-            max_lon = params.get('max_longitude')
-            period  = params.get('period')
-            if not (min_lat and max_lat and min_lon and max_lon and period):
-                return {"error": "Missing latitude/longitude range or period parameter"}
-            df = self.influxdb.get_vehicles_by_location(min_lat, max_lat, min_lon, max_lon, period)
-            return df.to_dict(orient='records')
-
-        #history_all
-        #Params: period
-        elif endpoint == 'allvehicles':
+        elif uri and uri[0] == 'vehicles':
+            min_latitude = params.get('min_latitude')
+            max_latitude = params.get('max_latitude')
+            min_longitude = params.get('min_longitude')
+            max_longitude = params.get('max_longitude')
             period = params.get('period')
-            if not period:
+            if min_latitude and max_latitude and min_longitude and max_longitude and period:
+                vehicles = self.influxdb.get_vehicles_by_location(min_latitude, max_latitude, min_longitude, max_longitude, period)
+                vehicles_json = vehicles.to_json(orient='columns')
+                return vehicles_json
+            else:
+                return {"error": "Missing latitude/longitude range or period parameter"}
+        elif uri and uri[0] == 'allvehicles':
+            period = params.get('period')
+            if period:
+                vehicles = self.influxdb.show_all_vehicles_on_map(period)
+                vehicles_json = vehicles.to_json(orient='columns')
+                return vehicles_json
+            else:
                 return {"error": "Missing period parameter"}
             
         elif uri and uri[0] == 'calculate distance':
@@ -81,23 +75,23 @@ class influxconnectoreServer:
         return {"error": "Invalid URI"} # Handle invalid URIs   
         
 
-
 if __name__ == '__main__':
     # Enable CORS
     cherrypy_cors.install()
 
+    # Configuration for MethodDispatcher and disabling sessions to avoid session issues
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
-            'tools.sessions.on': False,
+            'tools.sessions.on': False,  # Disable sessions if not needed
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [('Content-Type', 'application/json')],
         }
     }
 
-    cherrypy.config.update({
-        'server.socket_host': '0.0.0.0',
-        'server.socket_port': 8084
-    })
+    # Update the socket configuration
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
+
+    # Start the server with the configuration
     cherrypy.tree.mount(influxconnectoreServer(), '/', conf)
     cherrypy.engine.start()
