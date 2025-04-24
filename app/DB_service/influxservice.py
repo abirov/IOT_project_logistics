@@ -9,7 +9,7 @@ class influxconnectoreServer:
 
     def __init__(self):
         self.influxdb = influxdbmanager('configinfluxdb.json')
-
+    
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
         if uri and uri[0] == 'location':
@@ -53,8 +53,27 @@ class influxconnectoreServer:
                 return vehicles_json
             else:
                 return {"error": "Missing period parameter"}
-        else:
-            return {"error": "Invalid URI"}
+            
+        elif uri and uri[0] == 'calculate distance':
+            vehicle_id = params.get('vehicle_id')
+            period = params.get('period')
+            if vehicle_id and period:
+                distance = self.influxdb.calculate_distance(vehicle_id, period)
+                return {"distance": distance}
+            else:
+                return {"error": "Missing vehicle_id or period parameter"}
+            
+        elif uri and uri[0] == 'MeanSpeed':
+            vehicle_id = params.get('vehicle_id')
+            period = params.get('period')
+            if vehicle_id and period:
+                mean_speed = self.influxdb.calculate_mean_speed(vehicle_id, period)
+                return {"mean_speed": mean_speed}
+            else:
+                return {"error": "Missing vehicle_id or period parameter"}
+            
+        return {"error": "Invalid URI"} # Handle invalid URIs   
+        
 
 if __name__ == '__main__':
     # Enable CORS

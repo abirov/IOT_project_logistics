@@ -23,32 +23,15 @@ class MyMQTT:
     def OnConnect(self, paho_mqtt, userdata, flags, rc):
         print("Connected to %s with result code: %d" % (self.broker, rc))
 
-    def OnMessageReceived(self, paho_mqtt, userdata, msg):
-        # A new message is received
-        self.notifier.notify(msg.topic, msg.payload)
-
     def Publish(self, topic, msg):
         # publish a message with a certain topic
         self._paho_mqtt.publish(topic, json.dumps(msg), 2)
 
-    def Subscribe(self, topic):
-
-        # subscribe for a topic
-        self._paho_mqtt.subscribe(topic, 2)
-        # just to remember that it works also as a subscriber
-        self._isSubscriber = True
-        self._topic = topic
-        print("subscribed to %s" % (topic))
-
+   
     def start(self):
         # manage connection to broker
         self._paho_mqtt.connect(self.broker, self.port)
         self._paho_mqtt.loop_start()
-
-    def unsubscribe(self):
-        if (self._isSubscriber):
-            # remember to unsuscribe if it is working also as subscriber
-            self._paho_mqtt.unsubscribe(self._topic)
 
     def stop(self):
         if (self._isSubscriber):

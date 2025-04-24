@@ -4,6 +4,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 import os
 import json
 import pandas as pd
+from math import radians, sin, cos, sqrt, atan2
 
 class influxdbmanager:
     def __init__(self, config_file):
@@ -63,7 +64,7 @@ class influxdbmanager:
                 })
 
         location_df = pd.DataFrame(result)
-        return location_df, vehicle_id
+        return location_df
     
     def get_vehicle_by_location(self, latitude, longitude, period):
         latitude = float(latitude)
@@ -108,6 +109,62 @@ class influxdbmanager:
         vehicles = self.query_api.query_data_frame(query)
         return vehicles
     
+
+    # post process query for more complex functionality
+
+
+    def get_vehicle_path(self, vehicle_id, period):
+        query = f"""
+        from(bucket: "{self.influxdb_bucket}")
+            |> range(start: -{period})
+            |> filter(fn: (r) => r["_measurement"] == "vehicle" and r["vehicle_id"] == "{vehicle_id}")
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> keep(columns: ["_time", "latitude", "longitude"])
+            |> sort(columns: ["_time"], desc: true)
+        """
+        df = self.query_api.query_data_frame(query)
+        return df
+    
+
+
+    def calculate_distance(self, vehicle_id, period):
+        df = self.get_vehicle_path(vehicle_id, period)
+        if df.empty or len(df) < 2:
+            return 0.0
+
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371000  # Earth radius in meters
+            phi1 = radians(lat1)
+            phi2 = radians(lat2)
+            delta_phi = radians(lat2 - lat1)
+            delta_lambda = radians(lon2 - lon1)
+
+            a = sin(delta_phi / 2)**2 + cos(phi1) * cos(phi2) * sin(delta_lambda / 2)**2
+            c = 2 * atan2(sqrt(a), sqrt(1 - a))
+            return R * c  # distance in meters
+
+        distances = []
+        for i in range(1, len(df)):
+            lat1, lon1 = df.iloc[i - 1]['latitude'], df.iloc[i - 1]['longitude']
+            lat2, lon2 = df.iloc[i]['latitude'], df.iloc[i]['longitude']
+            distance = haversine(lat1, lon1, lat2, lon2)
+            distances.append(distance)
+        total_distance = sum(distances)
+        return total_distance
+
+    def MeanSpeed(self, vehicle_id, period):
+        df = self.get_vehicle_path(vehicle_id, period)
+        if df.empty or len(df) < 2:
+            return 0.0
+
+        total_distance = self.calculate_distance(vehicle_id, period)
+        time_diff = (df.iloc[0]['_time'] - df.iloc[-1]['_time']).total_seconds() / 3600
+        if time_diff == 0:
+            return 0.0
+        mean_speed = total_distance / time_diff  # in meters per hour
+        return mean_speed/1000         # convert to km/h
+
+    
     def close(self):
         self.client.close()
         print("InfluxDB connection closed")
@@ -115,10 +172,14 @@ class influxdbmanager:
 
 if __name__ == '__main__':
         influxdb = influxdbmanager('configinfluxdb.json')
-        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
-        location, vehicle_id = influxdb.get_location('vehicle9', '720')
-        print(location)
-#         location, vehicle_id = influxdb.get_location('vehicle11', '720')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle333333'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2025-04-19T00:00:00Z')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle4444444'}, {'latitude': 138.7749, 'longitude': -28.4194}, '2025-04-19T00:00:00Z') 
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle222222'}, {'latitude': 138.7749, 'longitude': -28.4194}, '2025-04-19T00:00:00Z')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle111111'}, {'latitude': 138.7749, 'longitude': -28.4194}, '2025-04-01T00:00:00Z')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle6666666'}, {'latitude': 138.7749, 'longitude': -28.4194}, '2025-04-01T00:00:00Z')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle7777777'}, {'latitude': 138.7749, 'longitude': -28.4194}, '2025-03-01T00:00:00Z')
+        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle555555'}, {'latitude': 138.7749, 'longitude': -28.4194}   , '2025-02-19T00:00:00Z')    
+        
 #         print(location)
 #         # columns = location.columns
 #         # print("Columns:", columns)
