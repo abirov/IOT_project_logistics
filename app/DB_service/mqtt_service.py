@@ -12,7 +12,7 @@ class MQTTService:
             with open(path, 'r') as f:
                 config = json.load(f)
         self.broker = config['broker']
-        self.port = config['port']
+        self.port = config['port']  
         self.topic = config['topic']
 
 
@@ -57,7 +57,7 @@ class MQTTService:
         self.client.loop_forever()
 
 
-if __name__ == "__main__":
-    service = MQTTService("configmqtt.json")
-    service.run()
+# if __name__ == "__main__":
+#     service = MQTTService("mqttconfig.json")
+#     service.run()
     

@@ -41,8 +41,8 @@ class FeedbackRepository:
 
     def get_by_driver_id(self, driver_id):
         try:
-            feedback = self.collection.find_one({'driver_id':(driver_id)})
-            return Feedback.from_dict(feedback) if feedback else None
+            feedback = self.collection.find({'driver_id':(driver_id)})
+            return [Feedback.from_dict(feedback) for feedback in feedback] if feedback else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
         except Exception as e:
@@ -53,11 +53,11 @@ class FeedbackRepository:
     def get_by_package_ids(self, package_ids):
         """Retrieve feedbacks for multiple packages."""
         try:
-            # ✅ Ensure package_ids is a list
+            
             if isinstance(package_ids, str):
-                package_ids_list = package_ids.split(",")  # Convert comma-separated IDs into a list
+                package_ids_list = package_ids.split(",")  
             elif isinstance(package_ids, list):
-                package_ids_list = package_ids  # Already a list, no need to split
+                package_ids_list = package_ids  
             else:
                 raise ValueError("Invalid package_ids format")
 
