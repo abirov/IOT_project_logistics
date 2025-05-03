@@ -3,10 +3,10 @@ from datetime import datetime
 import paho.mqtt.publish as publish
 
 # ==== CONFIGURATION ====
-vehicle_ids     = ["09102cd8-c063-4af1-8269-3b29f137d975", "af91581d-a0b2-4b96-a67c-73b46383c14f", "vehicle_3"]
+vehicle_ids     = ["09102cd8-c063-4af1-8269-3b29f137d975", "af91581d-a0b2-4b96-a67c-73b46383c14f", "vehicle_4"]
 broker          = "localhost"
 port            = 1883
-topic           = "vehicle/position"
+topic_prefix    = "location/vehicle"
 interval_seconds= 60    # 1 min
 
 # Torino bounding box
@@ -23,7 +23,7 @@ def generate_random_coordinate(prev_lat=None, prev_lon=None, step=0.0005):
 # initialize positions
 positions = {vid: generate_random_coordinate() for vid in vehicle_ids}
 
-print("🚀 Simulator started — publishing to", broker)
+print(" Simulator started — publishing to", broker)
 
 try:
     while True:
@@ -38,7 +38,7 @@ try:
             }
             payload = json.dumps(msg)
             print("📡", payload)
-            publish.single(topic, payload=payload,
+            publish.single(f"{topic_prefix}/{vid}", payload=payload,
                            hostname=broker, port=port)
             positions[vid] = (lat, lon)
         time.sleep(interval_seconds)

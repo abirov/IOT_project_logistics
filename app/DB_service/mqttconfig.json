@@ -1,6 +1,5 @@
 {
-    "broker": "localhost",
-    "port": 1883,
-    "topic": "location/vehicle/+"
-  }
-  
+  "broker": "localhost",
+  "port": 1883,
+  "topic": "location/vehicle/+"
+}

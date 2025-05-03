@@ -2,9 +2,9 @@ import subprocess
 
 def run_services():
     services = [
-        "app/catalog_service/catalog2.py",
+        #"app/catalog_service/catalog2.py",
         "app\DB_service\influxservice.py",
-        "telegram_bot/Bot.py",
+        #"telegram_bot/Bot.py",
         
         # "app/reputation_service/reputation.py",
 
