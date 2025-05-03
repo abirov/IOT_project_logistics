@@ -41,6 +41,7 @@
             <p><strong>Phone:</strong> {{ driver.phone }}</p>
             <p><strong>Address:</strong> {{ driver.address }}</p>
             <p><strong>License Number:</strong> {{ driver.license_number }}</p>
+            <p><strong>ID:</strong> {{ driver._id }}</p>
             <p><strong>Reputation Score:</strong> <span class="badge bg-success">{{ driver_reputation }}</span></p>
     
             
@@ -103,29 +104,113 @@
         {% if selected_packages %}
         <div class="row">
             {% for package in selected_packages %}
-            <div class="col-md-4">
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ package.name }}</h5>
-                        <p><strong>Package ID:</strong> {{ package._id }}</p>
-                        <p><strong>Warehouse:</strong> {{ package.warehouse_id }}</p>
-                        <p><strong>Weight:</strong> {{ package.weight }} kg</p>
-                        <p><strong>Delivery Address:</strong> {{ package.delivery_address }}</p>
-                        <p><strong>Status:</strong> {{ package.status }}</p>
-                        <form action="/mark_delivered" method="get">
-                            <input type="hidden" name="driver_id" value="{{ driver._id }}">
-                            <input type="hidden" name="package_id" value="{{ package._id }}">
-                            <button type="submit" class="btn btn-primary">Mark as Delivered</button>
-                        </form>
+                <div class="col-md-4">
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ package.name }}</h5>
+                            <p><strong>Package ID:</strong> {{ package._id }}</p>
+                            <p><strong>Warehouse:</strong> {{ package.warehouse_id }}</p>
+                            <p><strong>Weight:</strong> {{ package.weight }} kg</p>
+                            <p><strong>Delivery Address:</strong> {{ package.delivery_address }}</p>
+                            <p><strong>Status:</strong> <span class="badge bg-info">{{ package.status }}</span></p>
+
+                            {% if package.status == "in warehouse" %}
+                                <form action="/update_package_status" method="get" class="status-update-form">
+                                    <input type="hidden" name="driver_id" value="{{ driver._id }}">
+                                    <input type="hidden" name="package_id" value="{{ package._id }}">
+                                    <input type="hidden" name="new_status" value="in-transit">
+                                    <button type="submit" class="btn btn-warning">Pick Up</button>
+                                </form>
+                            {% elif package.status == "in-transit" %}
+                                <form action="/update_package_status" method="get" class="status-update-form">
+                                    <input type="hidden" name="driver_id" value="{{ driver._id }}">
+                                    <input type="hidden" name="package_id" value="{{ package._id }}">
+                                    <input type="hidden" name="new_status" value="delivered">
+                                    <button type="submit" class="btn btn-success">Mark as Delivered</button>
+                                </form>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
             {% endfor %}
         </div>
         {% else %}
         <p>No selected packages yet.</p>
         {% endif %}
     </div>
-
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll(".change-status").forEach(button => {
+                button.addEventListener("click", function() {
+                    const form = this.closest(".status-form");
+                    const packageId = form.getAttribute("data-package-id");
+                    const driverId = form.getAttribute("data-driver-id");
+                    const newStatus = this.getAttribute("data-new-status");
+                    const statusSpan = document.getElementById(`status-${packageId}`);
+        
+                    // Disable button to prevent multiple clicks
+                    this.disabled = true;
+                    this.textContent = "Processing...";
+        
+                    fetch(`/update_package_status?driver_id=${driverId}&package_id=${packageId}&new_status=${newStatus}`, {
+                        method: "PUT"
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "success") {
+                            // Update status text
+                            statusSpan.textContent = newStatus;
+        
+                            // Change button text or remove it
+                            if (newStatus === "in-transit") {
+                                this.textContent = "Mark as Delivered";
+                                this.classList.remove("btn-warning");
+                                this.classList.add("btn-primary");
+                                this.setAttribute("data-new-status", "delivered");
+                                this.disabled = false; // Re-enable button for next action
+                            } else if (newStatus === "delivered") {
+                                form.innerHTML = ""; // Remove button after delivery
+                            }
+                        } else {
+                            this.textContent = "Try Again";
+                            this.disabled = false; // Re-enable if an error occurs
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error:", error);
+                        this.textContent = "Error! Try Again";
+                        this.disabled = false;
+                    });
+                });
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const statusButtons = document.querySelectorAll(".status-update-form");
+    
+            statusButtons.forEach(form => {
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault(); // Prevent default form submission
+    
+                    const formData = new FormData(this);
+                    const url = this.action + "?" + new URLSearchParams(formData).toString();
+    
+                    fetch(url, { method: "GET" })
+                        .then(response => {
+                            if (response.ok) {
+                                location.reload(); // Reload page after success
+                            } else {
+                                alert("Error: Try Again");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                            alert("Error: Try Again");
+                        });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

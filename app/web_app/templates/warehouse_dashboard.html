@@ -42,6 +42,7 @@
             <p><strong>Address:</strong> {{ address.street }}, {{ address.city }}, {{ address.state }}, {{ address.zip }}</p>
             <p><strong>Phone:</strong> {{ phone }}</p>
             <p><strong>Email:</strong> {{ email }}</p>
+            <p><strong>ID:</strong> {{ warehouse_id }}</p>
             <!--<p><strong>Reputation:</strong> Score {{ reputation.score }}, Reviews {{ reputation.reviews }}</p>-->
             <div class="mt-3">
                 <!-- Edit and Delete Warehouse -->
@@ -174,6 +175,7 @@
                         <th>Weight</th>
                         <th>Status</th>
                         <th>Feedback</th>
+                        <th>Track Vehicle</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -194,6 +196,13 @@
                                 {% endfor %}
                             {% else %}
                                 <span class="text-muted">No Feedback</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if package.status != 'delivered' and package.driver_id%}
+                                <a href="/track_vehicle?package_id={{ package._id }}" class="btn btn-success btn-sm">Track</a>
+                            {% else %}
+                                <span class="text-muted">Not available</span>
                             {% endif %}
                         </td>
                     </tr>

@@ -61,7 +61,8 @@ class WebApp:
             response.raise_for_status()
             result = response.json()
             driver_id = result.get("driver_id")
-            return f"<h1>Driver signed up successfully!</h1><p>Your Driver ID is: {driver_id}</p>"
+            template = self.env.get_template('driver_login.html')
+            return template.render()
         except Exception as e:
             cherrypy.log(f"Error submitting sign-in: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to sign up driver")
@@ -207,7 +208,7 @@ class WebApp:
             else:
                 cherrypy.log(f"Failed to retrieve feedbacks: {feedback_response.status_code}")
                 feedback_list = []
-
+            
             # Fetch available packages
             available_package_url = "http://127.0.0.1:8080/packages/packages?no_driver=true"
             available_response = requests.get(available_package_url)
@@ -263,19 +264,27 @@ class WebApp:
             cherrypy.log(f"Unexpected error: {e}")
             raise cherrypy.HTTPError(500, "Unexpected error selecting package")
      
+
     @cherrypy.expose
-    def mark_delivered(self, driver_id, package_id):
-        
-       
-            payload = {"status": "delivered"}
+    #@cherrypy.tools.json_out()
+    def update_package_status(self, driver_id, package_id, new_status):
+        """Update package status in MyCatalog and MongoDB via web."""
+        try:
+            # Define the update payload
+            payload = {"status": new_status}
             url = f"http://127.0.0.1:8080/packages/packages?package_id={package_id}"
 
-            # update the package's status
+            # Send the update request to MyCatalog
             response = requests.put(url, json=payload)
-            response.raise_for_status()
+            response.raise_for_status()  # Ensure the request was successful
 
-            cherrypy.log(f"Package {package_id} marked as delivered by driver {driver_id}")
-            return self.dashboard(driver_id)  # go to dashboard 
+            cherrypy.log(f"Package {package_id} updated to {new_status} by driver {driver_id}")
+
+            raise cherrypy.HTTPRedirect(f"/dashboard?driver_id={driver_id}")
+        except requests.RequestException as e:
+            cherrypy.log(f"Error updating package {package_id}: {str(e)}")
+            cherrypy.response.status = 500
+            return {"status": "error", "error": str(e)}
     
 
      
@@ -684,7 +693,60 @@ class WebApp:
         except Exception as e:
             cherrypy.log(f"Error searching package: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to search package")
+    @cherrypy.expose
+    def track_vehicle(self, package_id):
+        """Track vehicle based on package ID"""
+        try:
+            # Get package info
+            package_url = "http://127.0.0.1:8080/packages/packages"
+            package_response = requests.get(package_url, params={"package_id": package_id})
+            package_response.raise_for_status()
+            package = package_response.json()
 
+            driver_id = package.get("driver_id")
+            if not driver_id:
+                return "<h1>No driver assigned to this package.</h1>"
+
+            # Get driver info to find vehicle_id
+            driver_url = "http://127.0.0.1:8080/drivers/drivers"
+            driver_response = requests.get(driver_url, params={"driver_id": driver_id})
+            driver_response.raise_for_status()
+            driver = driver_response.json()
+
+            vehicle_id = driver.get("vehicle_id")
+            if not vehicle_id:
+                return "<h1>No vehicle assigned to this driver.</h1>"
+
+            # Get location from InfluxService
+            influx_url = os.getenv('INFLUX_URL', 'http://localhost:8083')
+            location_response = requests.get(f"{influx_url}/location", params={"vehicle_id": vehicle_id, "period": "2h"})
+            location_response.raise_for_status()
+            locations = location_response.json()
+
+            # Get distance and speed 
+            distance_response = requests.get(f"{influx_url}/calculate_distance", params={"vehicle_id": vehicle_id, "period": "1h"})
+            distance_response.raise_for_status()
+            distance_data = distance_response.json()
+            print("🚨 DEBUG distance_data:", distance_data) 
+            total_distance_km = distance_data.get("distance", 0.0) / 1000  # m to km
+
+            speed_response = requests.get(f"{influx_url}/MeanSpeed", params={"vehicle_id": vehicle_id, "period": "1h"})
+            speed_response.raise_for_status()
+            speed_data = speed_response.json()
+            mean_speed_kmh = speed_data.get("mean_speed", 0.0)
+
+            
+            template = self.env.get_template('track_vehicle_map.html')
+            return template.render(
+                locations=locations,
+                vehicle_id=vehicle_id,
+                total_distance=round(total_distance_km, 2),
+                mean_speed=round(mean_speed_kmh, 2)
+            )
+
+        except Exception as e:
+            cherrypy.log(f"Error tracking vehicle for package {package_id}: {e}")
+            return "<h1>Failed to track vehicle. Please try again later.</h1>"
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def get_warehouse_packages(self, warehouse_id):
@@ -722,4 +784,3 @@ if __name__ == '__main__':
     }
 
     cherrypy.quickstart(WebApp(catalog_url,reputation_url), '/',config)
-

@@ -15,6 +15,8 @@ class FeedbackRepository:
         feedback_dict = feedback.to_dict()
         result = self.collection.insert_one(feedback_dict)
         return str(result.inserted_id)
+    
+       
         
     def get_by_id(self, feedback_id):
         try:

@@ -2,14 +2,14 @@ import subprocess
 
 def run_services():
     services = [
+        
+        #"telegram_bot/Bot.py",
+        "app/simulation_service/Test_simulation.py",
         "app/catalog_service/catalog2.py",
-        "telegram_bot/Bot.py",
-        "app/reputation_service/reputation.py",
-
-        ##"app/simulation_service/simulation.py",
-
+        "app/DB_service/mqtt_service.py",
+        "app/DB_service/influxservice.py",
         "app/web_app/web.py",
-          
+        "app/reputation_service/reputation.py",
         
     ]
     

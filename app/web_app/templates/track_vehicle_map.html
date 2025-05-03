@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vehicle Tracking Map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+    <h2>Tracking Vehicle ID: {{ vehicle_id }}</h2>
+    <p><strong>Total Distance:</strong> {{ total_distance }} km</p>
+    <p><strong>Average Speed:</strong> {{ mean_speed }} km/h</p>
+
+    <div id="map" class="shadow-sm"></div>
+    <a href="/warehouse_options" class="btn btn-secondary mt-3">Back to Dashboard</a>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.7.0/dist/leaflet.polylineDecorator.min.js"></script>
+
+<script>
+    var map = L.map('map').setView([45.0703, 7.6869], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var locations = {{ locations | safe }};
+    var points = [];
+
+    for (var i = 0; i < locations.length; i++) {
+        var lat = locations[i].latitude;
+        var lon = locations[i].longitude;
+        var time = locations[i].time;
+
+        if (lat && lon) {
+            points.push([lat, lon]);
+        }
+    }
+
+    if (points.length > 0) {
+        // Start marker
+        L.marker(points[0], {
+            icon: L.icon({
+                iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            })
+        }).bindPopup("<b>Start Point</b>").addTo(map);
+
+        // End marker
+        L.marker(points[points.length - 1], {
+            icon: L.icon({
+                iconUrl: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            })
+        }).bindPopup("<b>End Point</b>").addTo(map);
+
+        // Draw polyline
+        var polyline = L.polyline(points, { color: 'blue', weight: 3 }).addTo(map);
+
+        // Draw arrows
+        var decorator = L.polylineDecorator(polyline, {
+            patterns: [
+                {
+                    offset: '10%',
+                    repeat: '30px',
+                    symbol: L.Symbol.arrowHead({
+                        pixelSize: 15,
+                        polygon: true,
+                        pathOptions: { color: 'red', weight: 3 }
+                    })
+                }
+            ]
+        }).addTo(map);
+
+        map.fitBounds(polyline.getBounds().pad(0.3));
+    } else {
+        alert("No location data available!");
+    }
+</script>
+
+</body>
+</html>
