@@ -439,7 +439,7 @@ class WebApp:
             response.raise_for_status()
             warehouse_data = response.json()
             cherrypy.log(f"Warehouse data from catalog: {warehouse_data}")
-        # Ensure response contains valid warehouse details
+        #  valid warehouse details
             if not warehouse_data:
                 cherrypy.log("No warehouse found with this email.")
                 return "<h1>No warehouse found with this email. Please try again.</h1>"
@@ -486,11 +486,11 @@ class WebApp:
             packages_response.raise_for_status()
             packages = packages_response.json()
             cherrypy.log(f"Package history data: {packages}")
-            # ✅ Extract package IDs from fetched packages
+            #  package IDs from fetched packages
             package_ids = [package["_id"] for package in packages]
             cherrypy.log(f"Extracted Package IDs: {package_ids}")
 
-            # ✅ Fetch feedbacks related to the extracted package IDs
+            # feedbacks related to the extracted package IDs
             feedbacks = []
             if package_ids:
                 feedback_url = f"http://127.0.0.1:8080/feedbacks/feedbacks"
@@ -598,7 +598,7 @@ class WebApp:
     def register_package(self, warehouse_id, package_name, source, destination, weight,dimensions, delivery_address):
         """Register a new package"""
         try:
-            # Log received input for debugging
+            #debugging
             cherrypy.log(f"Received data: warehouse_id={warehouse_id}, package_name={package_name}, "
                         f"source={source}, destination={destination}, weight={weight}, dimensions={dimensions}, delivery_address={delivery_address}")
 
@@ -622,10 +622,10 @@ class WebApp:
                 "status": "in warehouse",
             }
 
-            # Log the prepared package data
+           
             cherrypy.log(f"Prepared package data: {package_data}")
 
-            # Send the POST request
+            # Send POST request
             response = requests.post(f"http://127.0.0.1:8080/packages/packages", json=package_data)
             response.raise_for_status()
 
@@ -658,7 +658,7 @@ class WebApp:
             # Send the feedback 
             response = requests.post(f"http://127.0.0.1:8080/feedbacks/feedbacks", json=feedback_data)
             response.raise_for_status()
-            # ✅ Trigger reputation recalculation directly
+            
             rep_url = f"{self.reputation_url}/Reputation"
             rep_response = requests.put(rep_url, json={"driver_id": driver_id})
             rep_response.raise_for_status()

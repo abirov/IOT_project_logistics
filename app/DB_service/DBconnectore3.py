@@ -70,7 +70,7 @@ class influxdbmanager:
         longitude = float(longitude)
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                  f'|> range(start: -{period}) '
-                 f'|> filter(fn: (r) => r._measurement == "vehicle") '
+                 f'|> filter(fn: (r) => r._measurement == "LOCATION") '
                  f'|> filter(fn: (r) => r.latitude >= {latitude}) '
                  f'|> filter(fn: (r) => r.longitude >= {longitude}) '
                  f'|> sort(columns: ["_time"], desc: true) '
@@ -82,7 +82,7 @@ class influxdbmanager:
     def get_vehicles_by_location(self, min_latitude, max_latitude, min_longitude, max_longitude, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                  f'|> range(start: -{period}) '
-                 f'|> filter(fn: (r) => r._measurement == "vehicle" '
+                 f'|> filter(fn: (r) => r._measurement == "LOCATION" '
                  f'and r.latitude >= {min_latitude} '
                  f'and r.latitude <= {max_latitude} '
                  f'and r.longitude >= {min_longitude} '
@@ -96,7 +96,7 @@ class influxdbmanager:
     def show_all_vehicles_on_map(self, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                  f'|> range(start: -{period}) '
-                 f'|> filter(fn: (r) => r._measurement == "vehicle") '
+                 f'|> filter(fn: (r) => r._measurement == "LOCATION") '
                  f'|> sort(columns: ["_time"], desc: true) '
                  f'|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")')
         vehicles = self.query_api.query_data_frame(query)
