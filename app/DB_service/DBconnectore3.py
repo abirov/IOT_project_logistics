@@ -7,7 +7,7 @@ import pandas as pd
 from math import radians, sin, cos, sqrt, atan2
 
 class influxdbmanager:
-    def __init__(self, config_file):
+    def __init__(self, config_file, ):
         config = {}
         path = os.path.join(os.path.dirname(__file__), config_file)
         if os.path.exists(path):
@@ -28,6 +28,7 @@ class influxdbmanager:
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.query_api = self.client.query_api()
         self.delete_api = self.client.delete_api()
+
 
     def write_data(self, measurement, tags, fields, time):
         point = Point(measurement)
@@ -77,7 +78,7 @@ class influxdbmanager:
         longitude = float(longitude)
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                 f'|> range(start: -{period}) '
-                f'|> filter(fn: (r) => r._measurement == "vehicle") '
+                f'|> filter(fn: (r) => r._measurement == "LOCATION") '
                 f'|> filter(fn: (r) => r.latitude >= {latitude}) '
                 f'|> filter(fn: (r) => r.longitude >= {longitude}) '
                 f'|> sort(columns: ["_time"], desc: true) '
@@ -95,7 +96,7 @@ class influxdbmanager:
     def get_vehicles_by_location(self, min_latitude, max_latitude, min_longitude, max_longitude, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                 f'|> range(start: -{period}) '
-                f'|> filter(fn: (r) => r._measurement == "vehicle" '
+                f'|> filter(fn: (r) => r._measurement == "LOCATION" '
                 f'and r.latitude >= {min_latitude} '
                 f'and r.latitude <= {max_latitude} '
                 f'and r.longitude >= {min_longitude} '
@@ -109,7 +110,7 @@ class influxdbmanager:
     def show_all_vehicles_on_map(self, period):
         query = (f'from(bucket: "{self.influxdb_bucket}") '
                 f'|> range(start: -{period}) '
-                f'|> filter(fn: (r) => r._measurement == "vehicle") '
+                f'|> filter(fn: (r) => r._measurement == "LOCATION") '
                 f'|> sort(columns: ["_time"], desc: true)'
                 f'|>pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")')
         vehicles = self.query_api.query_data_frame(query)
@@ -123,7 +124,7 @@ class influxdbmanager:
         query = f"""
         from(bucket: "{self.influxdb_bucket}")
             |> range(start: -{period})
-            |> filter(fn: (r) => r["_measurement"] == "vehicle" and r["vehicle_id"] == "{vehicle_id}")
+            |> filter(fn: (r) => r["_measurement"] == "LOCATION" and r["vehicle_id"] == "{vehicle_id}")
             |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
             |> keep(columns: ["_time", "latitude", "longitude"])
             |> sort(columns: ["_time"], desc: true)
@@ -176,20 +177,4 @@ class influxdbmanager:
         print("InfluxDB connection closed")
 
 
-if __name__ == '__main__':
-        influxdb = influxdbmanager('configinfluxdb.json')
-        influxdb.write_data('vehicle', {'vehicle_id': 'vehicle20933'}, {'latitude': 39.7749, 'longitude': -150.4194}, '2024-09-12T16:00:00Z')
-        location, vehicle_id = influxdb.get_location('vehicle9', '720')
-        print(location)
-#         location, vehicle_id = influxdb.get_location('vehicle11', '720')
-#         print(location)
-#         # columns = location.columns
-#         # print("Columns:", columns)
-#         # print(location)
-#         # vehicle = influxdb.get_vehicle_by_location(138.7749, -28.4194, '2')
-#         # print(vehicle)
-#         # vehicles = influxdb.get_vehicles_by_location(137.7749, 147.7750, -29.4194, -30.4193, '100h')
-#         # print(vehicles)
-#         # vehicles = influxdb.show_all_vehicles_on_map('100')
-#         # print(vehicles)
-#         influxdb.close()
+
