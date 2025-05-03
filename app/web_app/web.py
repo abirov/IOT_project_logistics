@@ -114,18 +114,18 @@ class WebApp:
             url = "http://127.0.0.1:8080/drivers/drivers"
             cherrypy.log(f"Authenticating driver_email: {driver_email}")
 
-            # Query the driver details using the email
+            #driver details using the email
             response = requests.get(url, params={"driver_email": driver_email})
             response.raise_for_status()
             driver_data = response.json()
             cherrypy.log(f"Driver data from catalog: {driver_data}")
 
-            # Ensure response contains valid driver details
+            #  contains valid driver details
             if not driver_data:
                 cherrypy.log("No driver found with this email.")
                 return "<h1>No driver found with this email. Please try again.</h1>"
 
-            # Extract driver_id from the response
+            #driver_id 
             driver_id = driver_data.get("_id")
             if not driver_id:
                 cherrypy.log("Driver ID missing in catalog response.")
@@ -133,7 +133,7 @@ class WebApp:
 
             cherrypy.log(f"Driver found: {driver_data}, Driver ID: {driver_id}")
 
-            # Redirect to dashboard with the driver_id
+            # Redirect to dashboard with the driver id
             redirect_url = f"/dashboard?driver_id={driver_id}"
             cherrypy.response.headers["Location"] = redirect_url
             cherrypy.response.status = 303
@@ -159,9 +159,9 @@ class WebApp:
             driver_response.raise_for_status()
             driver = driver_response.json()
             cherrypy.log(f"Driver data: {driver}")
-            # ✅ Fetch reputation directly from Reputation Service
+            # reputation directly from Reputation Service
             reputation_url = f"{self.reputation_url}/Reputation"
-            reputation_response = requests.put(reputation_url, json={"driver_id": driver_id})  # ✅ Correct: Send driver_id in JSON
+            reputation_response = requests.put(reputation_url, json={"driver_id": driver_id})  # Send driver_id in JSON
             reputation_response.raise_for_status()
             reputation_data = reputation_response.json()
             driver_reputation = reputation_data.get("reputation", "N/A")

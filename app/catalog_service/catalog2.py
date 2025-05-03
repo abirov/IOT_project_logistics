@@ -7,8 +7,8 @@ from models.PackageRepository2 import PackageRepository
 from models.warehouseRepository2 import WarehouseRepository
 from models.FeedbackRepository2 import FeedbackRepository
 
-# from models.LogisticsPointRepository import LogisticsPoint    #not modified yet
-# from models.vehicleRepository import Vehicle                  #not modified yet
+# from models.LogisticsPointRepository import LogisticsPoint    
+# from models.vehicleRepository import Vehicle                  
 
 #depolay server for driver
 class driverServer:
