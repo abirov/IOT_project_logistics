@@ -21,6 +21,8 @@ class MQTTService:
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
+        self.client.connect(self.broker, self.port)  
+
 
         
 
@@ -58,6 +60,6 @@ class MQTTService:
 
 
 if __name__ == "__main__":
-    service = MQTTService("configmqtt.json")
+    service = MQTTService("mqttconfig.json")
     service.run()
     
