@@ -4,7 +4,8 @@ from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
-import json  
+import json
+import os  
 
 
 
@@ -228,7 +229,7 @@ class RESTBot:
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
             self.chatIDs[from_id]["role"]  = "warehouse"
-            self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
+            self.bot.sendMessage(from_id, text="Please enter the Warehouse Email or ID:")
 
         elif query_data == "view_warehouse_details":
             self.send_warehouse_details(from_id)
@@ -343,7 +344,6 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving driver details.")
 
     
-
     def show_available_packages(self, chat_id, driver_id):
         """Show available packages for pickup."""
         url = f"{self.catalog_url}/packages/packages?no_driver"
@@ -388,6 +388,7 @@ class RESTBot:
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
+
 
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
@@ -602,8 +603,10 @@ class RESTBot:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 package = response.json()
-                
-                # Fetch and format warehouse details if available
+
+                if not package:
+                    return "Package details not available."
+
                 warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
 
                 # Format the package details
@@ -1001,12 +1004,19 @@ class RESTBot:
             )
 
 
-if __name__ == "__main__":
-    TELEGRAM_BOT_TOKEN = "8159489225:AAGd897nlIv2JkkBuYwfyNXt4nAs15ILUNA"  # Replace with your actual bot token
-    CATALOG2_API_URL   = "http://127.0.0.1:8080"
-    INFLUX_API_URL     = "http://localhost:8084"
-    GOOGLE_MAPS_KEY    = "AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
 
+if __name__ == "__main__":
+    
+    config_path = os.path.join(os.path.dirname(__file__), "botconfig.json")
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    TELEGRAM_BOT_TOKEN = config["telegram_token"]
+    CATALOG2_API_URL   = config["catalog_api_url"]
+    INFLUX_API_URL     = config["influx_api_url"]
+    GOOGLE_MAPS_KEY    = config["google_maps_key"]
+
+    # Start bot
     bot = RESTBot(
         TELEGRAM_BOT_TOKEN,
         CATALOG2_API_URL,
@@ -1014,6 +1024,6 @@ if __name__ == "__main__":
         GOOGLE_MAPS_KEY
     )
 
-    print("🤖 Bot is running. Press Ctrl+C to exit.")
+    print("Bot is running. Press Ctrl+C to exit.")
     while True:
         pass
