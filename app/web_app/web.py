@@ -392,11 +392,14 @@ class WebApp:
             response.raise_for_status()
             result = response.json()
             warehouse_id = result.get("warehouse_id")
-            return f"<h1>Warehouse signed up successfully!</h1><p>Your Warehouse ID is: {warehouse_id}</p>"
+            
+            # Redirect to warehouse login page
+            template = self.env.get_template('warehouse_login.html')
+            return template.render()
+            
         except Exception as e:
             cherrypy.log(f"Error submitting warehouse sign-in: {e}", traceback=True)
             raise cherrypy.HTTPError(500, "Failed to sign up warehouse")
-
     @cherrypy.expose
     def warehouse_login(self):
         """Warehouse Login Page"""
@@ -487,7 +490,7 @@ class WebApp:
             packages = packages_response.json()
             cherrypy.log(f"Package history data: {packages}")
             #  package IDs from fetched packages
-            package_ids = [package["_id"] for package in packages]
+            package_ids = [package["_id"] for package in (packages or [])]
             cherrypy.log(f"Extracted Package IDs: {package_ids}")
 
             # feedbacks related to the extracted package IDs
