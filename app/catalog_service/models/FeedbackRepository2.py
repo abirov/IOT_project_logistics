@@ -43,8 +43,8 @@ class FeedbackRepository:
 
     def get_by_driver_id(self, driver_id):
         try:
-            feedback = self.collection.find_one({'driver_id':(driver_id)})
-            return Feedback.from_dict(feedback) if feedback else None
+            feedback = self.collection.find({'driver_id':(driver_id)})
+            return [Feedback.from_dict(feedback) for feedback in feedback] if feedback else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {driver_id}")
         except Exception as e:
@@ -74,8 +74,8 @@ class FeedbackRepository:
             
     def get_by_warehouse_id(self, warehouse_id):
         try:
-            feedback = self.collection.find_one({'warehouse_id':(warehouse_id)})
-            return Feedback.from_dict(feedback) if feedback else None
+            feedback = self.collection.find({'warehouse_id':(warehouse_id)})
+            return [Feedback.from_dict(feedback) for feedback in feedback] if feedback else None
         except InvalidId:
             raise ValueError(f"Invalid ObjectId: {warehouse_id}")
         except Exception as e:

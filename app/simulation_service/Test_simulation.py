@@ -7,12 +7,12 @@ vehicle_ids = [
     "09102cd8-c063-4af1-8269-3b29f137d975",
     "af91581d-a0b2-4b96-a67c-73b46383c14f",
     "vehicle_3",
-    "600fc6f9-7b50-4550-b311-e6f481923b79"   # <<< YOUR VEHICLE
+    "600fc6f9-7b50-4550-b311-e6f481923b79"   # <<< my VEHICLE
 ]
 
 broker          = "localhost"
 port            = 1883
-topic           = "vehicle/position"
+topic_prefix           = "location/vehicle"
 interval_seconds= 10    # 1 min
 
 # Torino bounding box
@@ -45,7 +45,7 @@ try:
             }
             payload = json.dumps(msg)
             print("📡", payload)
-            publish.single(topic, payload=payload,
+            publish.single(f"{topic_prefix}/{vid}", payload=payload,
                            hostname=broker, port=port)
             positions[vid] = (lat, lon)
         time.sleep(interval_seconds)

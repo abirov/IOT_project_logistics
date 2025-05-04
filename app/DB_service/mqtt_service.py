@@ -2,18 +2,27 @@ import paho.mqtt.client as mqtt
 import json
 from DBconnectore3 import influxdbmanager
 from paho.mqtt.client import CallbackAPIVersion
+import os
 
 class MQTTService:
-    def __init__(self,ClientID, broker, port, topic, config_file): 
-        self.port = port
-        self.topic = topic
-        self.clientID = ClientID #vehicle_id
-        self.broker = broker
+    def __init__(self, config_file="configmqtt.json"):
+        config = {} 
+        path = os.path.join(os.path.dirname(__file__), config_file)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                config = json.load(f)
+        self.broker = config['broker']
+        self.port = config['port']
+        self.topic = config['topic']
+
+
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION1)     
         self.influxdb = influxdbmanager(config_file = "configinfluxdb.json")
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-        self.client.connect(broker, port, 60)
+
+        self.client.connect(self.broker, self.port)  
+
 
         
 
@@ -39,30 +48,18 @@ class MQTTService:
             print(f"Data stored for vehicle: {vehicle_id}")
         except Exception as e:
             print("Error processing MQTT message:", e)
-    def Subscribe(self, topic):
 
-        # subscribe for a topic
-        self._paho_mqtt.subscribe(topic, 2)
-        # just to remember that it works also as a subscriber
-        self._isSubscriber = True
-        self._topic = topic
-        print("subscribed to %s" % (topic))
-
-    def unsubscribe(self):
-        if (self._isSubscriber):
-            # remember to unsuscribe if it is working also as subscriber
-            self._paho_mqtt.unsubscribe(self._topic)
+    def subscribe(self, topic):
+        self.client.subscribe(topic, qos=2)
+        self.topic = topic
+        print(f"Subscribed to topic: {topic}")
 
 
     def run(self):
         self.client.loop_forever()
 
+
 if __name__ == "__main__":
-    mqtt_service = MQTTService(
-        ClientID="mqtt_subscriber",
-        broker="localhost",
-        port=1883,
-        topic="vehicle/position",
-        config_file="configinfluxdb.json"
-    )
-    mqtt_service.run()
+    service = MQTTService("mqttconfig.json")
+    service.run()
+    

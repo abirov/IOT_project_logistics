@@ -253,12 +253,12 @@ class FeedbackServer:
             elif "driver_id" in params:
                 driver_id = params["driver_id"]
                 feedback = self.feedback_repo.get_by_driver_id(driver_id)
-                return feedback.to_dict() if feedback else None
+                return [feedback.to_dict() for feedback in feedback] if feedback else None
             # If a warehouse ID is provided, get the feedback by warehouse ID
             elif "warehouse_id" in params:
                 warehouse_id = params["warehouse_id"]
                 feedback = self.feedback_repo.get_by_warehouse_id(warehouse_id)
-                return feedback.to_dict() if feedback else None
+                return [feedback.to_dict() for feedback in feedback] if feedback else None
             else:
                 raise cherrypy.HTTPError(400, "Invalid GET request")
         else:
