@@ -1,13 +1,10 @@
-
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
 import json
-import os  
-
-
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,178 +12,166 @@ logging.basicConfig(level=logging.DEBUG)
 class RESTBot:
     def __init__(self, token, catalog_url, influx_api_url, google_maps_key):
         self.tokenBot = token
-        self.catalog_url = catalog_url  
-        self.influx_api_url  = influx_api_url 
+        self.catalog_url = catalog_url
+        self.influx_api_url = influx_api_url
         self.google_maps_key = google_maps_key
         self.bot = telepot.Bot(self.tokenBot)
         self.chatIDs = {}
 
-        
         MessageLoop(self.bot, {'chat': self.on_chat_message, 'callback_query': self.on_callback_query}).run_as_thread()
         logging.info("Bot is running. Waiting for messages...")
 
     def on_chat_message(self, msg):
-        """Handles incoming text messages."""
         content_type, chat_type, chat_id = telepot.glance(msg)
-        message = msg.get('text', '').strip().lower()  # Convert to lowercase for consistency
+        message = msg.get('text', '').strip().lower()
+        print(f"🔹 Message received: {message} from {chat_id}")
 
-        print(f"🔹 Message received: {message} from {chat_id}")  
-
-
-
-
-        #Shortcuts dictionary
         driver_shortcuts = {
-            "d": "/driver_details",   "de": "/driver_details",  "det": "/driver_details",
-            "p": "/pick_package",     "pa": "/pick_package",    "pan": "/panel",
-           
+            "d": "/driver_details", "de": "/driver_details", "det": "/driver_details",
+            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel",
         }
         warehouse_shortcuts = {
             "w": "/warehouse_details", "wa": "/warehouse_details", "war": "/warehouse_details",
-            "t": "/tracking_packages",  "tr": "/tracking_packages",  "tra": "/tracking_packages" ,   
-    
+            "t": "/tracking_packages", "tr": "/tracking_packages", "tra": "/tracking_packages",
+            "r": "/register_package", "re": "/register_package", "reg": "/register_package",
+
         }
-       
-       
+
         if chat_id not in self.chatIDs:
-            self.chatIDs[chat_id] = {
-                "state": None,
-                "driver_id": None,
-                "warehouse_id": None,
-                "role": None,
-            }
+            self.chatIDs[chat_id] = {"state": None, "driver_id": None, "warehouse_id": None, "role": None}
 
+        role = self.chatIDs[chat_id].get("role")
+        shortcuts = driver_shortcuts if role == "driver" else warehouse_shortcuts if role == "warehouse" else {}
 
-        role = self.chatIDs[chat_id].get("role")    # either "driver", "warehouse", or None
-        if role == "driver":
-            shortcuts = driver_shortcuts
-        elif role == "warehouse":
-            shortcuts = warehouse_shortcuts
-        else:
-            shortcuts = {} 
-
-        
         if message in shortcuts:
-           message = shortcuts[message]
-
-
-        #Convert shortcut message to full command
-        #if message in shortcuts:
-            #message = shortcuts[message]  # Replace the shortcut with the full command
-
-
+            message = shortcuts[message]
 
         if message == "/start":
-            print("✅ Start command received!")  
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🚗 Driver", callback_data='enter_as_driver')],
                 [InlineKeyboardButton(text="🏢 Warehouse User", callback_data='enter_as_warehouse')]
             ])
             self.bot.sendMessage(chat_id, text="Welcome to the Logistics Bot. Please choose your role:", reply_markup=keyboard)
-        
+
         elif message == "/panel":
-            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            driver_id = self.chatIDs[chat_id].get("driver_id")
             if driver_id:
                 self.driver_panel(chat_id, driver_id)
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
         elif message == "/pick_package":
-            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            driver_id = self.chatIDs[chat_id].get("driver_id")
             if driver_id:
                 self.show_available_packages(chat_id, driver_id)
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
         elif message == "/driver_details":
-            driver_id = self.chatIDs.get(chat_id, {}).get("driver_id")
+            driver_id = self.chatIDs[chat_id].get("driver_id")
             if driver_id:
-                 self.send_driver_details(chat_id)
+                self.send_driver_details(chat_id)
             else:
-                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_package_id":
-            print(f"📦 Fetching package details for ID: {message}")
             self.track_package(chat_id, message)
-            self.chatIDs[chat_id]["state"] = None  # Reset the state after handling the package ID
-            
+            self.chatIDs[chat_id]["state"] = None
 
         elif message == "/warehouse_details":
-            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            warehouse_id = self.chatIDs[chat_id].get("warehouse_id")
             if warehouse_id:
                 self.send_warehouse_details(chat_id)
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
-        
-        elif message in ("tracking_packages", "tracking by package id", "/tracking_packages"):
-            self.chatIDs[chat_id]["state"] = "awaiting_track_package_id"
-            self.bot.sendMessage(chat_id, text="Please enter the Package ID to track:")
 
         elif message == "/tracking_packages":
-            warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
+            warehouse_id = self.chatIDs[chat_id].get("warehouse_id")
             if warehouse_id:
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    #[InlineKeyboardButton(text="Tracking by Driver ID",  callback_data='track_driver')],
-                    [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')],
-                ])
-                self.bot.sendMessage(chat_id, text="Select tracking method:", reply_markup=keyboard)
+                self.show_in_transit_packages_for_warehouse(chat_id, warehouse_id)
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
+        elif message == "/register_package":
+            warehouse_id = self.chatIDs[chat_id].get("warehouse_id")
+            if warehouse_id:
+                # Trigger the registration process
+                self.chatIDs[chat_id]["register_package_step"] = "start"
+                self.chatIDs[chat_id]["register_package_data"] = {}
+                self.chatIDs[chat_id]["package_submitted"] = False  # Reset in case of new registration
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="▶️ Start Registration", callback_data="start_register_package")]
+                ])
+                self.bot.sendMessage(chat_id, text="📦 Ready to register a new package.\nPlease enter each field carefully.", reply_markup=keyboard)
+            else:
+                self.bot.sendMessage(chat_id, text="⚠️ You need to log in first as Warehouse User. Use /start.")
 
-         # —— Tracking by Driver ID
-        #elif self.chatIDs[chat_id]["state"] == "awaiting_track_driver_id":
-            #driver_id = message
-            #self.chatIDs[chat_id]["state"] = None
-            #self.track_driver(chat_id, driver_id)
 
-        # Tracking by Package ID
         elif self.chatIDs[chat_id]["state"] == "awaiting_track_package_id":
-            package_id = message
+            self.track_package(chat_id, message)
             self.chatIDs[chat_id]["state"] = None
-            self.track_package(chat_id, package_id)
-
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_driver_id":
-            print(f"📡 Fetching driver details for ID: {message}")
             self.fetch_driver_details(chat_id, message)
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_warehouse_id":
             self.fetch_warehouse_details(chat_id, message)
 
-        else:
-            print("⚠️ Unsupported command received.")
-            self.bot.sendMessage(chat_id, text="Command not supported. Use /start to begin.")
+        elif self.chatIDs[chat_id].get("register_package_step") == "name":
+            self.chatIDs[chat_id]["register_package_data"]["name"] = message
+            self.chatIDs[chat_id]["register_package_step"] = "confirm_name"
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✔️ Confirm and Continue", callback_data="confirm_name")]])
+            self.bot.sendMessage(chat_id, text=f"Selected: 📦 {message}", reply_markup=keyboard)
 
+        elif self.chatIDs[chat_id].get("register_package_step") == "weight":
+            try:
+                weight = float(message)
+                self.chatIDs[chat_id]["register_package_data"]["weight"] = weight
+                self.chatIDs[chat_id]["register_package_step"] = "confirm_weight"
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✔️ Confirm and Continue", callback_data="confirm_weight")]])
+                self.bot.sendMessage(chat_id, text=f"Selected: ⚖️ {weight} kg", reply_markup=keyboard)
+            except:
+                self.bot.sendMessage(chat_id, text="❌ Invalid weight. Please enter a number.")
+
+        elif self.chatIDs[chat_id].get("register_package_step") == "dimensions":
+            try:
+                dims = [float(x) for x in message.split(",")]
+                self.chatIDs[chat_id]["register_package_data"]["dimensions"] = {"length": dims[0], "width": dims[1], "height": dims[2]}
+                self.chatIDs[chat_id]["register_package_step"] = "confirm_dimensions"
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✔️ Confirm and Continue", callback_data="confirm_dimensions")]])
+                self.bot.sendMessage(chat_id, text=f"Selected: 📏 L:{dims[0]} W:{dims[1]} H:{dims[2]}", reply_markup=keyboard)
+            except:
+                self.bot.sendMessage(chat_id, text="❌ Invalid format. Please enter as length,width,height.")
+
+        #elif self.chatIDs[chat_id].get("register_package_step") == "address":
+            #self.chatIDs[chat_id]["register_package_data"]["delivery_address"] = message
+            #self.chatIDs[chat_id]["register_package_step"] = "review"
+            #keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✅ Submit Package", callback_data="submit_package")]])
+            #self.bot.sendMessage(chat_id, text=f"Selected: 📍 {message}\n\nReady to submit.", reply_markup=keyboard)
+        
+        elif self.chatIDs.get(chat_id, {}).get("register_package_step") == "address":
+            self.chatIDs[chat_id]["register_package_data"]["delivery_address"] = message
+            self.chatIDs[chat_id]["register_package_step"] = "review"
+            self.show_package_review(chat_id)
+
+
+        else:
+            self.bot.sendMessage(chat_id, text="⚠️ Unsupported command. Use /start to begin.")
 
     def on_callback_query(self, msg):
-        """Handles button clicks in Telegram."""
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
         print(f" Callback Query Data: {query_data}")
 
         if from_id not in self.chatIDs:
             self.chatIDs[from_id] = {"state": None, "driver_id": None}
 
-        if query_data == 'track_vehicle':
-            # Cancelling tracking by Driver ID and keeping just by Package ID
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                #[InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
-                [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')]
-            ])
-            self.bot.sendMessage(from_id, "Select tracking method:", reply_markup=keyboard)
-
-        #elif query_data == 'track_driver':
-            #self.chatIDs[from_id]["state"] = "awaiting_track_driver_id"
-            #self.bot.sendMessage(from_id, text="Please enter the Driver ID to track:")
-
-        elif query_data == 'track_package':
+        if query_data == 'track_package':
             self.chatIDs[from_id]["state"] = "awaiting_track_package_id"
             self.bot.sendMessage(from_id, text="Please enter the Package ID to track:")
 
-
         elif query_data == 'enter_as_driver':
             self.chatIDs[from_id]["state"] = "awaiting_driver_id"
-            self.chatIDs[from_id]["role"]  = "driver"
+            self.chatIDs[from_id]["role"] = "driver"
             self.bot.sendMessage(from_id, text="Please enter your Driver ID or Email:")
 
         elif query_data == "view_driver_details":
@@ -214,15 +199,13 @@ class RESTBot:
             self.confirm_package_delivery(from_id, package_id)
 
         elif query_data.startswith("reassign_order_"):
-            data = query_data.split("_")
-            package_id = data[2]
-            package_name = '_'.join(data[3:])  # Since package names might contain underscores, join the rest
+            package_id = query_data.split("_")[2]
+            package_name = '_'.join(query_data.split("_")[3:])
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Yes, Reassign", callback_data=f"confirm_reassign_{package_id}")],
                 [InlineKeyboardButton(text="❌ No, Cancel", callback_data="cancel_action")]
             ])
-            # Send a confirmation message including the package name
-            self.bot.sendMessage(from_id, text=f"⚠️ Are you sure you want to reassign the package '{package_name}'?", reply_markup=keyboard)
+            self.bot.sendMessage(from_id, text=f"⚠️ Are you sure you want to reassign '{package_name}'?", reply_markup=keyboard)
 
         elif query_data.startswith("confirm_reassign_"):
             package_id = query_data.split("_")[2]
@@ -233,35 +216,152 @@ class RESTBot:
 
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
-            self.chatIDs[from_id]["role"]  = "warehouse"
+            self.chatIDs[from_id]["role"] = "warehouse"
             self.bot.sendMessage(from_id, text="Please enter the Warehouse Email or ID:")
 
         elif query_data == "view_warehouse_details":
             self.send_warehouse_details(from_id)
 
+        elif query_data == "warehouse_tracking_packages":
+            warehouse_id = self.chatIDs.get(from_id, {}).get("warehouse_id")
+            if warehouse_id:
+                self.show_in_transit_packages_for_warehouse(from_id, warehouse_id)
+            else:
+                self.bot.sendMessage(from_id, text="⚠️ You need to log in first. Use /start.")
 
         elif query_data.startswith("track_on_map_"):
-            package_id = query_data[len("track_on_map_"):]
+            package_id = query_data.replace("track_on_map_", "")
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔗 Google Maps Link", callback_data=f"map_link_{package_id}")],
-                [InlineKeyboardButton(text="🖼  Static Map Image", callback_data=f"map_static_{package_id}")],
+                [InlineKeyboardButton(text="🖼 Static Map Image", callback_data=f"map_static_{package_id}")]
             ])
-            self.bot.sendMessage(from_id, "How would you like to view it?", reply_markup=keyboard)
+            self.bot.sendMessage(from_id, text="How would you like to view it?", reply_markup=keyboard)
 
         elif query_data.startswith("map_link_"):
-            package_id = query_data[len("map_link_"):]
+            package_id = query_data.replace("map_link_", "")
             self._send_maps_link(from_id, package_id)
 
         elif query_data.startswith("map_static_"):
-            package_id = query_data[len("map_static_"):]
+            package_id = query_data.replace("map_static_", "")
             self._send_static_map(from_id, package_id)
+
+        elif query_data.startswith("warehouse_pkg_details_"):
+            package_id = query_data.replace("warehouse_pkg_details_", "")
+            self.track_package(from_id, package_id)
+
+        elif query_data == "warehouse_track_by_id":
+            self.chatIDs[from_id]["state"] = "awaiting_track_package_id"
+            self.bot.sendMessage(from_id, text="Please enter the Package ID to track:")
+
+        elif query_data == "warehouse_register_package":
+            self.chatIDs[from_id]["register_package_step"] = "start"
+            self.chatIDs[from_id]["register_package_data"] = {}
+            self.chatIDs[from_id]["package_submitted"] = False  # Reset submission flag
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="▶️ Start Registration", callback_data="start_register_package")]
+            ])
+            self.bot.sendMessage(from_id, text="Please enter each field carefully.", reply_markup=keyboard)
+
+        elif query_data == "start_register_package":
+
+            # Block edit package if already submitted
+            if self.chatIDs.get(from_id, {}).get("package_submitted"):
+                self.bot.sendMessage(from_id, text="✅ Package already submitted. Registration already completed.")
+                return
+
+            self.chatIDs[from_id]["register_package_step"] = "name"
+            self.bot.sendMessage(from_id, text="Step 1/4 → Please enter the Package Name:")
+
+        elif query_data == "confirm_name":
+            self.chatIDs[from_id]["register_package_step"] = "weight"
+            self.bot.sendMessage(from_id, text="Step 2/4 → Please enter the Package Weight (kg):")
+
+        elif query_data == "confirm_weight":
+            self.chatIDs[from_id]["register_package_step"] = "dimensions"
+            self.bot.sendMessage(from_id, text="Step 3/4 → Please enter the Package Dimensions (L,W,H):")
+
+        elif query_data == "confirm_dimensions":
+            self.chatIDs[from_id]["register_package_step"] = "address"
+            self.bot.sendMessage(from_id, text="Step 4/4 → Please enter the Delivery Address:")
+
+        elif query_data == "submit_package":
+            data = self.chatIDs[from_id]["register_package_data"]
+            warehouse_id = self.chatIDs[from_id]["warehouse_id"]
+            
+            payload = {
+                "name": data["name"],
+                "weight": data["weight"],
+                "dimensions": data["dimensions"],
+                "warehouse_id": warehouse_id,
+                "driver_id": None,
+                "delivery_address": data["delivery_address"]
+            }
+
+            response = requests.post(f"{self.catalog_url}/packages/packages", json=payload)
+
+            if response.status_code == 200:
+                text_message = f"""✅ <b>PACKAGE REGISTERED SUCCESSFULLY</b> ✅
+
+                📦 <b>Name:</b> {data['name']}
+                ⚖️ <b>Weight:</b> {data['weight']} kg
+                📏 <b>Dimensions:</b> {data['dimensions']}
+                📍 <b>Address:</b> {data['delivery_address']}
+                🏢 <b>Warehouse ID:</b> {warehouse_id}
+                🚚 <b>Status:</b> in warehouse"""
+                
+                self.bot.sendMessage(from_id, text=text_message, parse_mode="HTML")
+
+                # Mark as submitted to block further edits
+                self.chatIDs[from_id]["package_submitted"] = True
+
+            else:
+                self.bot.sendMessage(from_id, text="❌ Failed to register package.")
+
+            self.chatIDs[from_id]["register_package_step"] = None
+            self.chatIDs[from_id]["register_package_data"] = {}
+
+        #EDIT OPTIONS 
+        elif query_data == "edit_name":
+
+            if self.chatIDs.get(from_id, {}).get("package_submitted"):
+                self.bot.sendMessage(from_id, text="✅ Package already submitted. Editing is not allowed.")
+                return
+
+            self.chatIDs[from_id]["register_package_step"] = "name"
+            self.bot.sendMessage(from_id, text="✏️ Please enter the new Package Name:")
+
+        elif query_data == "edit_weight":
+
+            if self.chatIDs.get(from_id, {}).get("package_submitted"):
+                self.bot.sendMessage(from_id, text="✅ Package already submitted. Editing is not allowed.")
+                return
+
+            self.chatIDs[from_id]["register_package_step"] = "weight"
+            self.bot.sendMessage(from_id, text="✏️ Please enter the new Package Weight (kg):")
+
+        elif query_data == "edit_dimensions":
+
+            if self.chatIDs.get(from_id, {}).get("package_submitted"):
+                self.bot.sendMessage(from_id, text="✅ Package already submitted. Editing is not allowed.")
+                return
+
+            self.chatIDs[from_id]["register_package_step"] = "dimensions"
+            self.bot.sendMessage(from_id, text="✏️ Please enter the new Package Dimensions (L,W,H):")
+
+        elif query_data == "edit_address":
+
+            if self.chatIDs.get(from_id, {}).get("package_submitted"):
+                self.bot.sendMessage(from_id, text="✅ Package already submitted. Editing is not allowed.")
+                return
+
+            self.chatIDs[from_id]["register_package_step"] = "address"
+            self.bot.sendMessage(from_id, text="✏️ Please enter the new Delivery Address:")
 
         else:
             self.bot.sendMessage(from_id, text="❓ I didn't understand that action.")
 
         self.bot.answerCallbackQuery(query_id, text="")
 
-        self.bot.answerCallbackQuery(query_id, text="")
 
     def fetch_driver_details(self, chat_id, identifier):
         """Fetch driver details from the catalog API and determine if the identifier is an email or driver ID."""
@@ -454,18 +554,18 @@ class RESTBot:
         
     
     def change_package_status(self, chat_id, package_id):
-        """Change the package status from 'in warehouse' to 'in transit'."""
+        """Change the package status from 'in warehouse' to 'in-transit'."""
 
         url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
-        new_status = {"status": "in transit"}
+        new_status = {"status": "in-transit"}
 
         try:
             response = requests.put(url, json=new_status, timeout=5)
 
             if response.status_code in [200, 201]:
                 
-                 self.chatIDs[chat_id]["package_status"] = "in transit"
-                 self.bot.sendMessage(chat_id, text="✅ Package status updated to 'in transit'! 🚚")
+                 self.chatIDs[chat_id]["package_status"] = "in-transit"
+                 self.bot.sendMessage(chat_id, text="✅ Package status updated to 'in-transit'! 🚚")
 
                  
                  keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -482,7 +582,7 @@ class RESTBot:
 
 
     def confirm_package_delivery(self, chat_id, package_id):
-        """Change the package status from 'in transit' to 'Delivered '."""
+        """Change the package status from 'in-transit' to 'Delivered '."""
 
         url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
         new_status = {"status": "delivered"}
@@ -506,9 +606,9 @@ class RESTBot:
     def cancel_package_assignment(self, chat_id, package_id):
         """Set the driver_id to None in the package document in MongoDB."""
 
-        # Check if package is already in transit
-        if self.chatIDs[chat_id].get("package_status") == "in transit":
-           self.bot.sendMessage(chat_id, text="⚠️ The package is already 'in transit' and cannot be reassigned.")
+        # Check if package is already in-transit
+        if self.chatIDs[chat_id].get("package_status") == "in-transit":
+           self.bot.sendMessage(chat_id, text="⚠️ The package is already 'in-transit' and cannot be reassigned.")
        
            return  
         
@@ -520,6 +620,9 @@ class RESTBot:
 
             if response.status_code in [200, 204]:  
              self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
+             
+             self.chatIDs[chat_id]["package_status"] = None  # reset any status
+             self.bot.sendMessage(chat_id, text="❗ You can no longer change status for this package. It has been reassigned.")
              self.send_driver_menu(chat_id) 
 
             else:
@@ -594,7 +697,7 @@ class RESTBot:
                         )'''
 
                         buttons = []
-                        if package.get('status') == 'in transit':
+                        if package.get('status') == 'in-transit':
                             buttons.append([InlineKeyboardButton(text="✅ Confirm Delivery", callback_data=f"confirm_delivery_{package['_id']}")])
                         elif package.get('status') == 'in warehouse':
                             buttons.append([InlineKeyboardButton(text="🚚 Confirm Pick-up", callback_data=f"change_status_{package['_id']}")])
@@ -715,7 +818,8 @@ class RESTBot:
 
                     keyboard = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="📜 View Warehouse Details", callback_data="view_warehouse_details")],
-                        [InlineKeyboardButton(text="📦 Track Packages", callback_data="track_vehicle")]
+                        [InlineKeyboardButton(text="📦 Track Packages [NEW]", callback_data='warehouse_tracking_packages')],
+                        [InlineKeyboardButton(text="➕ Register Package", callback_data='warehouse_register_package')]
                     ])
                     self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
 
@@ -774,7 +878,7 @@ class RESTBot:
         package_details = self.fetch_package_details(package_id)
         reply_markup = None 
         
-        # Check if the package is delivered 
+        # if package is delivered:
         if package_details and "🚦 *status:* delivered" in package_details.lower():
             
             # Re-fetch the package JSON to extract additional delivery info
@@ -802,7 +906,7 @@ class RESTBot:
                 package_details += "\n\nAn error occurred while fetching delivery details."
         
         # if package is: "in transit"
-        elif package_details and "🚦 *status:* in transit" in package_details.lower():
+        elif package_details and "🚦 *status:* in-transit" in package_details.lower():
 
             url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             try:
@@ -820,13 +924,13 @@ class RESTBot:
                             driver_info = f"\n*ID:* {driver_id_value}\n*Name:* {driver_name_value}"
                         else:
                             driver_info = f"\n{raw_driver_info}"
-                    package_details += f"\n\nPackage is *in transit* by driver:{driver_info}."
+                    package_details += f"\n\nPackage is *in-transit* by driver:{driver_info}."
                    
                     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="Track on the map", callback_data=f"track_on_map_{package_id}")]
                     ])
                 else:
-                    package_details += "\n\nThe package is marked as in transit, but transit details are not available."
+                    package_details += "\n\nThe package is marked as in-transit, but transit details are not available."
             except Exception as e:
                 print(f"Error fetching transit details: {str(e)}")
                 package_details += "\n\nAn error occurred while fetching transit details."
@@ -855,8 +959,81 @@ class RESTBot:
             return f"ID: {d.get('_id','N/A')}, Name: {d.get('name','N/A')}"
         except Exception:
             return "ID: N/A, Name: N/A"
-
     
+
+    def show_in_transit_packages_for_warehouse(self, chat_id, warehouse_id):
+        """Fetch and display all in-transit packages for a warehouse with buttons."""
+        url = f"{self.catalog_url}/packages/packages?warehouse_id={warehouse_id}"
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            packages = response.json()
+            if isinstance(packages, dict):
+                packages = [packages]  # handle single package case
+
+            # Filter in transit packages
+            in_transit_packages = [p for p in packages if p.get("status", "").lower() == "in-transit"]
+
+            if in_transit_packages:
+                # Build buttons
+                buttons = []
+                for pkg in in_transit_packages:
+                    pkg_id = pkg.get("_id", "N/A")
+                    pkg_name = pkg.get("name", "Unnamed")
+                    buttons.append([InlineKeyboardButton(text=f"📦 {pkg_name} ({pkg_id})", callback_data=f"warehouse_pkg_details_{pkg_id}")])
+
+                # extra button for delivered/warehouse/global
+                buttons.append([InlineKeyboardButton(text="➡️ Track Delivered / Global Search", callback_data="warehouse_track_by_id")])
+
+                keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+                self.bot.sendMessage(chat_id, text="📦 *In-Transit Packages:*", parse_mode="Markdown", reply_markup=keyboard)
+
+            else:
+                self.bot.sendMessage(chat_id, text="No in-transit packages found for your warehouse.")
+
+        except Exception as e:
+            print(f"Error fetching packages: {e}")
+            self.bot.sendMessage(chat_id, text="Failed to fetch package list. Please try again later.")
+
+
+    def register_package(self, chat_id, package_data):
+        """Send package data to backend to create package"""
+        url = f"{self.catalog_url}/packages/packages"
+        try:
+            response = requests.post(url, json=package_data, timeout=5)
+            if response.status_code == 200:
+                result = response.json()
+                package_id = result.get("package_id")
+                self.bot.sendMessage(chat_id, text=f"✅ Package registered successfully! Package ID: {package_id}")
+            else:
+                self.bot.sendMessage(chat_id, text="❌ Failed to register package.")
+        except Exception as e:
+            self.bot.sendMessage(chat_id, text=f"⚠️ Error occurred: {str(e)}")
+
+
+    def show_package_review(self, chat_id):
+        data = self.chatIDs[chat_id]["register_package_data"]
+
+        summary = (
+            f"📦 Package Registration Review:\n\n"
+            f"Name: {data.get('name', '❌ Not set')}\n"
+            f"Weight: {data.get('weight', '❌ Not set')} kg\n"
+            f"Dimensions: {data.get('dimensions', '❌ Not set')}\n"
+            f"Address: {data.get('delivery_address', '❌ Not set')}\n"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Edit Name", callback_data="edit_name")],
+            [InlineKeyboardButton(text="✏️ Edit Weight", callback_data="edit_weight")],
+            [InlineKeyboardButton(text="✏️ Edit Dimensions", callback_data="edit_dimensions")],
+            [InlineKeyboardButton(text="✏️ Edit Address", callback_data="edit_address")],
+            [InlineKeyboardButton(text="✅ Submit Package", callback_data="submit_package")],
+            [InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_action")]
+        ])
+
+        self.bot.sendMessage(chat_id, text=summary, reply_markup=keyboard)
+
+
     def _send_maps_link(self, chat_id, package_id):
         
         #print(f"[DEBUG] ▶️ Start _send_maps_link for package_id={package_id}")
