@@ -4,7 +4,8 @@ from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import logging
-import json  
+import json
+import os  
 
 
 
@@ -14,15 +15,15 @@ logging.basicConfig(level=logging.DEBUG)
 class RESTBot:
     def __init__(self, token, catalog_url, influx_api_url, google_maps_key):
         self.tokenBot = token
-        self.catalog_url = catalog_url  # Base URL for catalog API
-        self.influx_api_url  = influx_api_url #InfluxDB REST base URL
+        self.catalog_url = catalog_url  
+        self.influx_api_url  = influx_api_url 
         self.google_maps_key = google_maps_key
         self.bot = telepot.Bot(self.tokenBot)
         self.chatIDs = {}
 
         
         MessageLoop(self.bot, {'chat': self.on_chat_message, 'callback_query': self.on_callback_query}).run_as_thread()
-        logging.info("🤖 Bot is running. Waiting for messages...")
+        logging.info("Bot is running. Waiting for messages...")
 
     def on_chat_message(self, msg):
         """Handles incoming text messages."""
@@ -34,7 +35,7 @@ class RESTBot:
 
 
 
-            #Shortcuts dictionary
+        #Shortcuts dictionary
         driver_shortcuts = {
             "d": "/driver_details",   "de": "/driver_details",  "det": "/driver_details",
             "p": "/pick_package",     "pa": "/pick_package",    "pan": "/panel",
@@ -62,7 +63,7 @@ class RESTBot:
         elif role == "warehouse":
             shortcuts = warehouse_shortcuts
         else:
-            shortcuts = {}   # no shortcuts until they pick a role
+            shortcuts = {} 
 
         
         if message in shortcuts:
@@ -116,6 +117,10 @@ class RESTBot:
                 self.send_warehouse_details(chat_id)
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
+        
+        elif message in ("tracking_packages", "tracking by package id", "/tracking_packages"):
+            self.chatIDs[chat_id]["state"] = "awaiting_track_package_id"
+            self.bot.sendMessage(chat_id, text="Please enter the Package ID to track:")
 
         elif message == "/tracking_packages":
             warehouse_id = self.chatIDs.get(chat_id, {}).get("warehouse_id")
@@ -128,17 +133,19 @@ class RESTBot:
             else:
                 self.bot.sendMessage(chat_id, text="⚠️ You need to log in first. Use /start.")
 
-         # —— Tracking by Driver ID (separate from login) ——
+
+         # —— Tracking by Driver ID
         #elif self.chatIDs[chat_id]["state"] == "awaiting_track_driver_id":
             #driver_id = message
             #self.chatIDs[chat_id]["state"] = None
             #self.track_driver(chat_id, driver_id)
 
-        # —— Tracking by Package ID (separate from pickup) ——
+        # Tracking by Package ID
         elif self.chatIDs[chat_id]["state"] == "awaiting_track_package_id":
             package_id = message
             self.chatIDs[chat_id]["state"] = None
             self.track_package(chat_id, package_id)
+
 
         elif self.chatIDs[chat_id]["state"] == "awaiting_driver_id":
             print(f"📡 Fetching driver details for ID: {message}")
@@ -155,13 +162,13 @@ class RESTBot:
     def on_callback_query(self, msg):
         """Handles button clicks in Telegram."""
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
-        print(f"🔔 Callback Query Data: {query_data}")
+        print(f" Callback Query Data: {query_data}")
 
         if from_id not in self.chatIDs:
             self.chatIDs[from_id] = {"state": None, "driver_id": None}
 
         if query_data == 'track_vehicle':
-            # Present options for tracking by Driver ID or Package ID
+            # Cancelling tracking by Driver ID and keeping just by Package ID
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 #[InlineKeyboardButton(text="Tracking by Driver ID", callback_data='track_driver')],
                 [InlineKeyboardButton(text="Tracking by Package ID", callback_data='track_package')]
@@ -175,7 +182,6 @@ class RESTBot:
         elif query_data == 'track_package':
             self.chatIDs[from_id]["state"] = "awaiting_track_package_id"
             self.bot.sendMessage(from_id, text="Please enter the Package ID to track:")
-
 
 
         elif query_data == 'enter_as_driver':
@@ -228,14 +234,13 @@ class RESTBot:
         elif query_data == 'enter_as_warehouse':
             self.chatIDs[from_id]["state"] = "awaiting_warehouse_id"
             self.chatIDs[from_id]["role"]  = "warehouse"
-            self.bot.sendMessage(from_id, text="Please enter your Warehouse ID:")
+            self.bot.sendMessage(from_id, text="Please enter the Warehouse Email or ID:")
 
         elif query_data == "view_warehouse_details":
             self.send_warehouse_details(from_id)
 
 
         elif query_data.startswith("track_on_map_"):
-            # strip the 13‑char prefix "track_on_map_"
             package_id = query_data[len("track_on_map_"):]
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔗 Google Maps Link", callback_data=f"map_link_{package_id}")],
@@ -244,30 +249,26 @@ class RESTBot:
             self.bot.sendMessage(from_id, "How would you like to view it?", reply_markup=keyboard)
 
         elif query_data.startswith("map_link_"):
-            # strip the 9‑char prefix "map_link_"
             package_id = query_data[len("map_link_"):]
             self._send_maps_link(from_id, package_id)
 
         elif query_data.startswith("map_static_"):
-            # strip the 11‑char prefix "map_static_"
             package_id = query_data[len("map_static_"):]
             self._send_static_map(from_id, package_id)
 
         else:
             self.bot.sendMessage(from_id, text="❓ I didn't understand that action.")
 
-        # clear Telegram’s loading spinner
         self.bot.answerCallbackQuery(query_id, text="")
-
-
-
 
         self.bot.answerCallbackQuery(query_id, text="")
 
     def fetch_driver_details(self, chat_id, identifier):
         """Fetch driver details from the catalog API and determine if the identifier is an email or driver ID."""
-        # Determine if the identifier is an email or a driver ID and construct the URL accordingly
-        if '@' in identifier:
+        identifier = identifier.strip()
+        is_email   = "@" in identifier
+        
+        if is_email:
             url = f"{self.catalog_url}/drivers/drivers?driver_email={identifier}"
         else:
             url = f"{self.catalog_url}/drivers/drivers?driver_id={identifier}"
@@ -275,11 +276,21 @@ class RESTBot:
         try:
            
             response = requests.get(url, timeout=5)
-            logging.debug(f"📡 API Response Status: {response.status_code}")
+            #logging.debug(f"API Response Status: {response.status_code}")
 
             if response.status_code == 200:
                 driver = response.json()
-                logging.debug(f"👤 Driver Data: {driver}")
+                #logging.debug(f" Driver Data: {driver}")
+
+                #do a case-insensitive 
+                if is_email and not driver:
+                    all_resp = requests.get(f"{self.catalog_url}/drivers/drivers", timeout=5)
+                    if all_resp.status_code == 200:
+                        for d in all_resp.json() or []:
+                            if d.get('email','').lower() == identifier.lower():
+                                driver = d
+                                #logging.debug(f"Fallback matched driver: {driver}")
+                                break
 
                 if driver:
                     # Update the chat state and driver_id
@@ -301,7 +312,6 @@ class RESTBot:
               
                 self.bot.sendMessage(chat_id, text="❌ Failed to fetch driver details.")
         except Exception as e:
-            # Log and handle exceptions during the HTTP request
             logging.error(f"❌ Error fetching driver details: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred.")
 
@@ -343,7 +353,6 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving driver details.")
 
     
-
     def show_available_packages(self, chat_id, driver_id):
         """Show available packages for pickup."""
         url = f"{self.catalog_url}/packages/packages?no_driver"
@@ -357,9 +366,9 @@ class RESTBot:
                     return
 
                 for package in packages:
-                    package_details = self.fetch_package_details(package['_id'])
+                    package_details = self.fetch_package_details(str(package['_id']))
 
-                    '''# Retrieve and format warehouse information
+                    '''# OLD FORMAT
                     warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
                     package_details = (
                         f"📦 *Package Name:* {package.get('name', 'N/A')}\n"
@@ -376,8 +385,7 @@ class RESTBot:
                     )'''
 
                     self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
-
-                    # Create a keyboard for this specific package
+                 
                     keyboard = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text=f"🚚 Pick Package {package['name']}", callback_data=f"pick_package_{package['_id']}")]
                     ])
@@ -388,6 +396,7 @@ class RESTBot:
         except Exception as e:
             logging.error(f"❌ Error fetching packages: {str(e)}")
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while fetching packages please check.")
+
 
 
     def assign_package_to_driver(self, chat_id, package_id, driver_id):
@@ -414,7 +423,7 @@ class RESTBot:
 
                 package_info = self.fetch_package_details(package_id)
             
-            
+                 #Old format
                 '''package_info = (
                     f"📦 *Package Details:*\n"
                     f"🆔 *ID:* {package['_id']}\n"
@@ -483,7 +492,7 @@ class RESTBot:
 
             if response.status_code in [200, 201]:
                 self.bot.sendMessage(chat_id, text="✅  Package successfully delivered! 🎉")
-                self.send_driver_menu(chat_id)  # Redirect to driver-specific menu
+                self.send_driver_menu(chat_id)  
 
 
             else:
@@ -509,9 +518,9 @@ class RESTBot:
         try:
             response = requests.put(url, json=data, timeout=5)
 
-            if response.status_code in [200, 204]:  # Assuming 200 OK or 204 No Content as successful
+            if response.status_code in [200, 204]:  
              self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
-             self.send_driver_menu(chat_id)  # Redirect to driver-specific menu
+             self.send_driver_menu(chat_id) 
 
             else:
              self.bot.sendMessage(chat_id, text="⚠️ Failed to cancel the order. Please try again.")
@@ -531,7 +540,7 @@ class RESTBot:
 
 
     def send_driver_menu(self, chat_id):
-        """Send the driver-specific menu, including an option to view assigned packages."""
+        """Send the driver-specific menu to user."""
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📋 View My Details", callback_data="view_driver_details")],
             [InlineKeyboardButton(text="📦 Pick Up a Package", callback_data="show_available_packages")],
@@ -540,18 +549,28 @@ class RESTBot:
         self.bot.sendMessage(chat_id, text="What would you like to do?", reply_markup=keyboard)
 
 
-
     def driver_panel(self, chat_id, driver_id):
         """Fetch and display all packages assigned to the driver, filtering out delivered packages."""
-        url = f"{self.catalog_url}/packages/packages?driver_id={driver_id}"
+        url = f"{self.catalog_url}/packages/packages?driver_id={str(driver_id)}"
 
         try:
             response = requests.get(url, timeout=5)
-            logging.debug(f"📡 API Response Status: {response.status_code}")
-            logging.debug(f"📦 API Response Content: {response.text}")  # Log the full API response
+            #logging.debug(f"API Response Status: {response.status_code}")
+            #logging.debug(f"API Response Content: {response.text}")  
 
             if response.status_code == 200:
-                packages = response.json()
+                try:
+                    packages = response.json()
+
+                    # Ensure packages is always a list of dicts
+                    if not isinstance(packages, list):
+                        packages = [packages]
+
+                    # Filter out non-dict items
+                    packages = [p for p in packages if isinstance(p, dict)]
+
+                except Exception as e:
+                    packages = []
 
                 if not packages:
                     self.bot.sendMessage(chat_id, text="📦 You have no assigned packages at the moment.")
@@ -561,6 +580,7 @@ class RESTBot:
                     if package.get('status') != 'delivered':
                         package_info = self.fetch_package_details(package['_id'])
                         
+                        #Old format
                         '''package_info = (
                             f"📦 *Package Details:*\n"
                             f"🆔 *ID:* {package['_id']}\n"
@@ -593,59 +613,56 @@ class RESTBot:
 
 
     def fetch_package_details(self, package_id):
-        """Fetch package details from the API and format them into a Markdown string for Telegram messages, including warehouse details."""
-        # Construct the URL to fetch package details
         url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
-        
         try:
-            # Perform the API request for package details
             response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                package = response.json()
-                
-                # Fetch and format warehouse details if available
-                warehouse_info = self.get_warehouse_details(package.get("warehouse_id")) if package.get("warehouse_id") else "Warehouse details not available."
+            response.raise_for_status()
+            package = response.json()
+            if isinstance(package, str):
+                package = json.loads(package)
+            if not package:
+                return 
 
-                # Format the package details
-                package_info = (
-                    f"📦 *Package Details:*\n"
-                    f"🆔 *ID:* {package.get('_id', 'N/A')}\n"
-                    f"📦 *Name:* {package.get('name', 'N/A')}\n"
-                    f"⚖️ *Weight:* {package.get('weight', 'N/A')} kg\n"
-                    f"📏 *Dimensions:* {package.get('dimensions', {}).get('length', 'N/A')} x "
-                    f"{package.get('dimensions', {}).get('width', 'N/A')} x "
-                    f"{package.get('dimensions', {}).get('height', 'N/A')} cm\n"
-                    f"🏢 *Warehouse Details:* {warehouse_info}\n"
-                    f"📍 *Delivery Address:* {package.get('delivery_address', {}).get('street', 'N/A')}, "
-                    f"{package.get('delivery_address', {}).get('city', 'N/A')} "
-                    f"({package.get('delivery_address', {}).get('zipcode', 'N/A')})\n"
-                    f"🚦 *Status:* {package.get('status', 'N/A')}"
-                )
-                return package_info
+            # Normalize address into a single string:
+            addr = package.get("delivery_address")    #ADR COULD BE: a dict, a string or None
+            if isinstance(addr, dict):                #if addr is a diet then:
+                city   = addr.get("city",   "N/A")
+                street = addr.get("street", "N/A")
+                zipc   = addr.get("zipcode","N/A")
+                delivery_addr = f"{city}, {street} ({zipc})"    # now delivery_addr is guaranteed to be a string like
+
             else:
-                return "Failed to fetch package details."
+                # could be None or already a string
+                delivery_addr = addr or "N/A"
+
+            warehouse_info = self.get_warehouse_details(str(package.get("warehouse_id"))) \
+                            if package.get("warehouse_id") else "Warehouse details not available."
+
+            package_info = (
+                f"📦 *Package Details:*\n"
+                f"🆔 *ID:* {package.get('_id','N/A')}\n"
+                f"📦 *Name:* {package.get('name','N/A')}\n"
+                f"⚖️ *Weight:* {package.get('weight','N/A')} kg\n"
+                f"📏 *Dimensions:* "
+                f"{package.get('dimensions',{}).get('length','N/A')} x "
+                f"{package.get('dimensions',{}).get('width','N/A')} x "
+                f"{package.get('dimensions',{}).get('height','N/A')} cm\n"
+                f"🏢 *Warehouse:* {warehouse_info}\n"
+                f"📍 *Delivery Address:* {delivery_addr}\n"
+                f"🚦 *Status:* {package.get('status','N/A')}"
+            )
+            return package_info
+
         except requests.RequestException as e:
-            return f"Error fetching package details: {str(e)}"
-
-    def get_driver_info(self, driver_id):
-        """Fetch driver details from the API and return a formatted string."""
-        driver_url = f"http://127.0.0.1:8080/drivers/drivers?driver_id={driver_id}"
-        try:
-            response = requests.get(driver_url, timeout=5)
-            if response.status_code == 200:
-                driver_data = response.json()
-                driver_id_value = driver_data.get("_id", "N/A")
-                driver_name = driver_data.get("name", "N/A")
-                return f"ID: {driver_id_value}, Name: {driver_name}"
-            else:
-                return "Driver information not available."
+            return f"Error fetching package details: {e}"
         except Exception as e:
-            print(f"Error fetching driver info: {str(e)}")
-            return "Driver information not available due to an error."
+            logging.error(f"Error in fetch_package_details formatting: {e}")
+            return "Package details not available."
+
 
     def get_warehouse_details(self, warehouse_id):
-        """Fetches and formats warehouse details from the catalog API using the warehouse ID."""
-        warehouse_details_url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
+        """Fetches warehouse details from the catalog API using the warehouse ID."""
+        warehouse_details_url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={str(warehouse_id)}"
         try:
             response = requests.get(warehouse_details_url, timeout=5)
             if response.status_code == 200:
@@ -662,18 +679,33 @@ class RESTBot:
 
     def fetch_warehouse_details(self, chat_id, identifier):
         """Fetch warehouse details from the catalog API using ID or email."""
-        if '@' in identifier:
+        identifier = identifier.strip()
+        is_email   = '@' in identifier
+
+        if is_email:
             url = f"{self.catalog_url}/warehouses/warehouses?warehouse_email={identifier}"
         else:
             url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={identifier}"
 
         try:
             response = requests.get(url, timeout=5)
-            logging.debug(f"📡 API Response Status (Warehouse): {response.status_code}")
+            #logging.debug(f"API Response Status (Warehouse): {response.status_code}")
 
             if response.status_code == 200:
                 warehouse = response.json()
-                logging.debug(f"🏢 Warehouse Data: {warehouse}")
+                logging.debug(f" Warehouse Data: {warehouse}")
+                
+             
+                if is_email and not warehouse:
+                    all_resp = requests.get(f"{self.catalog_url}/warehouses/warehouses", timeout=5)
+                    if all_resp.status_code == 200:
+                        candidates = all_resp.json() or []
+                        #logging.debug(f" Warehouse fallback fetched {len(candidates)} records")
+                        for w in candidates:
+                            if w.get('email','').lower() == identifier.lower():
+                                warehouse = w
+                                #logging.debug(f"Warehouse fallback matched: {warehouse}")
+                                break
 
                 if warehouse:
                     self.chatIDs[chat_id] = {"state": "warehouse_logged_in", "warehouse_id": warehouse["_id"]}
@@ -706,7 +738,7 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ No warehouse ID found. Please log in again using /start.")
             return
 
-        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
+        url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={str(warehouse_id)}"
 
         try:
             response = requests.get(url, timeout=5)
@@ -735,56 +767,16 @@ class RESTBot:
              logging.error(f"❌ Error retrieving warehouse details: {str(e)}")
              self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while retrieving warehouse details.")
 
-    def track_vehicle(self, chat_id):
-        """Simulate tracking by sending a location map."""
-        # Example coordinates for demonstration
-        latitude, longitude = 40.7128, -74.0060  # New York City coordinates for example
-        map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={latitude},{longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7Clabel:V%7C{latitude},{longitude}&key=AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
-
-        # Fetch the map image from the URL
-        response = requests.get(map_url)
-        if response.status_code == 200:
-            # Write the image to a temporary file
-            temp_image_path = 'temp_map.png'
-            with open(temp_image_path, 'wb') as f:
-                f.write(response.content)
-            
-            # Send the image to the chat
-            with open(temp_image_path, 'rb') as photo:
-                self.bot.sendPhoto(chat_id, photo=photo, caption="Current location of the delivery vehicle.")
-        else:
-            # Print detailed error information if the map retrieval fails
-            print("Failed to retrieve map image. Status code:", response.status_code)
-            print("Response body:", response.text)  # This will print the error details provided by Google Maps API
-            self.bot.sendMessage(chat_id, "Failed to retrieve map image.")
-
-    #def track_vehicle(self, chat_id):
-        #"""Send a link to Google Maps showing a location."""
-        # Example coordinates for demonstration
-        #latitude, longitude = 40.7128, -74.0060  # New York City coordinates
-        # Create a URL that opens these coordinates in Google Maps
-        #map_url = f"https://www.google.com/maps/?q={latitude},{longitude}"
-
-        # Send the URL as a clickable link in a message
-        #self.bot.sendMessage(chat_id, text=f"View the location on Google Maps: {map_url}", disable_web_page_preview=True)
-
-    def track_driver(self, chat_id, driver_id):
-        # Implement driver tracking logic here
-        print(f"Tracking driver with ID: {driver_id}")
-        # Fetch driver details and send to user...
-        self.bot.sendMessage(chat_id, text="Driver location: [Location Details Here]")
-
-
-    
 
     def track_package(self, chat_id, package_id):
         """Fetch and display package details using the package ID."""
-        print(f"📦 Fetching package details for Package ID: {package_id}")
+        #print(f"📦 Fetching package details for Package ID: {package_id}")
         package_details = self.fetch_package_details(package_id)
-        reply_markup = None  # default, no keyboard
+        reply_markup = None 
         
-        # Check if the package is delivered by examining the status in the formatted details
+        # Check if the package is delivered 
         if package_details and "🚦 *status:* delivered" in package_details.lower():
+            
             # Re-fetch the package JSON to extract additional delivery info
             url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             try:
@@ -794,8 +786,6 @@ class RESTBot:
                     driver_id = package_json.get("driver_id", None)
                     driver_info = ""
                     if driver_id:
-                        # Use the get_driver_info method which returns a string like:
-                        # "ID: 675897aebdb7c9ebe2fa26ce, Name: Jane Cristina"
                         raw_driver_info = self.get_driver_info(driver_id)
                         parts = raw_driver_info.split(", ")
                         if len(parts) == 2:
@@ -811,9 +801,9 @@ class RESTBot:
                 print(f"Error fetching delivery details: {str(e)}")
                 package_details += "\n\nAn error occurred while fetching delivery details."
         
-        # New branch: Check for the "in transit" status
+        # if package is: "in transit"
         elif package_details and "🚦 *status:* in transit" in package_details.lower():
-            # Re-fetch the package JSON to extract additional transit info (driver info)
+
             url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             try:
                 response = requests.get(url, timeout=5)
@@ -831,7 +821,7 @@ class RESTBot:
                         else:
                             driver_info = f"\n{raw_driver_info}"
                     package_details += f"\n\nPackage is *in transit* by driver:{driver_info}."
-                    # Create inline keyboard with a "Track on the map" button
+                   
                     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="Track on the map", callback_data=f"track_on_map_{package_id}")]
                     ])
@@ -841,11 +831,10 @@ class RESTBot:
                 print(f"Error fetching transit details: {str(e)}")
                 package_details += "\n\nAn error occurred while fetching transit details."
         
-        # Check for the "in warehouse" status as before
+        # if package "in warehouse" 
         elif package_details and "🚦 *status:* in warehouse" in package_details.lower():
             package_details += "\n\nThe package is currently *in our warehouse*, awaiting pickup by a driver."
-        
-        # Send the package details if they exist, otherwise show an error
+  
         if package_details:
             if reply_markup:
                 self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown", reply_markup=reply_markup)
@@ -853,17 +842,31 @@ class RESTBot:
                 self.bot.sendMessage(chat_id, text=package_details, parse_mode="Markdown")
         else:
             self.bot.sendMessage(chat_id, text="Failed to fetch package details. Please check the Package ID and try again.")
+    
 
+    def get_driver_info(self, driver_id):
+        """Fetch a drivers basic info (ID & name) from the API jst for using above def"""
+        url = f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}"
+        try:
+            resp = requests.get(url, timeout=5)
+            resp.raise_for_status()
+            d = resp.json() or {}
+            # build  the string 
+            return f"ID: {d.get('_id','N/A')}, Name: {d.get('name','N/A')}"
+        except Exception:
+            return "ID: N/A, Name: N/A"
+
+    
     def _send_maps_link(self, chat_id, package_id):
         
-        print(f"[DEBUG] ▶️ Start _send_maps_link for package_id={package_id}")
+        #print(f"[DEBUG] ▶️ Start _send_maps_link for package_id={package_id}")
 
         # 1) Get driver_id from package
         pkg_resp = requests.get(
             f"{self.catalog_url}/packages/packages?package_id={package_id}",
             timeout=5
         )
-        print(f"[DEBUG] pkg HTTP {pkg_resp.status_code}: {pkg_resp.text}")
+        #print(f"[DEBUG] pkg HTTP {pkg_resp.status_code}: {pkg_resp.text}")
         try:
             pkg = pkg_resp.json()
         except ValueError as e:
@@ -871,7 +874,7 @@ class RESTBot:
             return self.bot.sendMessage(chat_id, "❌ Failed to parse package response.")
 
         driver_id = pkg.get("driver_id")
-        print(f"[DEBUG] driver_id = {driver_id!r}")
+        #print(f"[DEBUG] driver_id = {driver_id!r}")
         if not driver_id:
             return self.bot.sendMessage(chat_id, "❌ That package has no driver assigned.")
 
@@ -880,7 +883,7 @@ class RESTBot:
             f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}",
             timeout=5
         )
-        print(f"[DEBUG] drv HTTP {drv_resp.status_code}: {drv_resp.text}")
+        #print(f"[DEBUG] drv HTTP {drv_resp.status_code}: {drv_resp.text}")
         try:
             drv = drv_resp.json()
         except ValueError as e:
@@ -888,7 +891,7 @@ class RESTBot:
             return self.bot.sendMessage(chat_id, "❌ Failed to parse driver response.")
 
         vehicle_id = drv.get("vehicle_id")
-        print(f"[DEBUG] vehicle_id = {vehicle_id!r}")
+        #print(f"[DEBUG] vehicle_id = {vehicle_id!r}")
         if not vehicle_id:
             return self.bot.sendMessage(chat_id, "❌ No vehicle_id found for that driver.")
 
@@ -898,8 +901,9 @@ class RESTBot:
             params={"vehicle_id": vehicle_id, "period": "1000h"},
             timeout=5
         )
-        print(f"[DEBUG] influx HTTP {influx_resp.status_code}: {influx_resp.text[:200]}…")
+        #print(f"[DEBUG] influx HTTP {influx_resp.status_code}: {influx_resp.text[:200]}…")
         pts = influx_resp.text
+
         # handle possible string payload
         if isinstance(pts, str):
             try:
@@ -907,7 +911,7 @@ class RESTBot:
             except json.JSONDecodeError as e:
                 print(f"[ERROR] cannot decode influx JSON: {e}")
                 return self.bot.sendMessage(chat_id, "❌ Unexpected response format from location service.")
-        print(f"[DEBUG] parsed pts list length = {len(pts) if isinstance(pts, list) else 'not a list'}")
+        #print(f"[DEBUG] parsed pts list length = {len(pts) if isinstance(pts, list) else 'not a list'}")
 
         if not pts:
             return self.bot.sendMessage(chat_id, "ℹ️ No location data stored yet.")
@@ -916,7 +920,7 @@ class RESTBot:
         latest = pts[0]
         print(f"[DEBUG] latest point = {latest}")
         lat, lon = latest.get("latitude"), latest.get("longitude")
-        print(f"[DEBUG] lat, lon = {lat}, {lon}")
+        #print(f"[DEBUG] lat, lon = {lat}, {lon}")
 
         # 5) Send live Google Maps link
         maps_link = f"https://www.google.com/maps?q={lat},{lon}"
@@ -986,8 +990,19 @@ class RESTBot:
             f"&markers=color:red|label:P|{lat},{lon}"
             f"&key={self.google_maps_key}"
         )
-        img_data = requests.get(static_url, timeout=5).content
+        logging.debug(f"🔑 Using Google Maps key: {self.google_maps_key}")
 
+        # 5a) Fetch and validate
+        map_resp = requests.get(static_url, timeout=5)
+        if map_resp.status_code != 200 or 'image' not in map_resp.headers.get('Content-Type', ''):
+            #logging.error(f"Static Maps error {map_resp.status_code}: {map_resp.text}")
+            return self.bot.sendMessage(
+                chat_id,
+                "❌ Could not fetch map image. Check your Google API key & Static Maps settings."
+            )
+        img_data = map_resp.content
+
+        
         # 6) Save & send the image
         temp_path = "pkg_loc.png"
         with open(temp_path, "wb") as f:
@@ -1001,12 +1016,19 @@ class RESTBot:
             )
 
 
-if __name__ == "__main__":
-    TELEGRAM_BOT_TOKEN = "8159489225:AAGd897nlIv2JkkBuYwfyNXt4nAs15ILUNA"  
-    CATALOG2_API_URL   = "http://127.0.0.1:8080"
-    INFLUX_API_URL     = "http://localhost:8084"
-    GOOGLE_MAPS_KEY    = "AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
 
+if __name__ == "__main__":
+    
+    config_path = os.path.join(os.path.dirname(__file__), "botconfig.json")
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    TELEGRAM_BOT_TOKEN = config["telegram_token"]
+    CATALOG2_API_URL   = config["catalog_api_url"]
+    INFLUX_API_URL     = config["influx_api_url"]
+    GOOGLE_MAPS_KEY    = config["google_maps_key"]
+
+    # Start bot
     bot = RESTBot(
         TELEGRAM_BOT_TOKEN,
         CATALOG2_API_URL,
