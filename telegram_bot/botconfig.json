@@ -1,0 +1,6 @@
+{
+    "telegram_token": "7265466265:AAG94bXPGiVyj6hjYm8bgH4mPsf8s_nRfyc",
+    "catalog_api_url": "http://127.0.0.1:8080",
+    "influx_api_url": "http://localhost:8083",
+    "google_maps_key": "AIzaSyDnwzgQZ9naw7lZ2XWXanZzFH8bYoP3ZAQ"
+}
