@@ -28,7 +28,7 @@ class RESTBot:
 
         driver_shortcuts = {
             "d": "/driver_details", "de": "/driver_details", "det": "/driver_details",
-            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel",
+            "p": "/pick_package", "pa": "/pick_package", "pan": "/panel", "m": "/panel", "my": "/panel",
         }
         warehouse_shortcuts = {
             "w": "/warehouse_details", "wa": "/warehouse_details", "war": "/warehouse_details",
@@ -300,16 +300,28 @@ class RESTBot:
             response = requests.post(f"{self.catalog_url}/packages/packages", json=payload)
 
             if response.status_code == 200:
-                text_message = f"""✅ <b>PACKAGE REGISTERED SUCCESSFULLY</b> ✅
+                result = response.json()
+                package_id = result.get("package_id")
 
-                📦 <b>Name:</b> {data['name']}
-                ⚖️ <b>Weight:</b> {data['weight']} kg
-                📏 <b>Dimensions:</b> {data['dimensions']}
-                📍 <b>Address:</b> {data['delivery_address']}
-                🏢 <b>Warehouse ID:</b> {warehouse_id}
-                🚚 <b>Status:</b> in warehouse"""
-                
-                self.bot.sendMessage(from_id, text=text_message, parse_mode="HTML")
+                # FIRST MESSAGE: Only success
+                self.bot.sendMessage(from_id, text="✅ <b>PACKAGE REGISTERED SUCCESSFULLY</b> ✅", parse_mode="HTML")
+
+                # SECOND MESSAGE: Package details
+                dims = data['dimensions']
+                details_message = f"""
+                    📦 <b>Name:</b> {data['name']}
+                    ⚖️ <b>Weight:</b> {data['weight']} kg
+                    📏 <b>Dimensions:</b>
+                    📐 <b>Length:</b> {dims['length']} cm
+                    📐 <b>Width:</b> {dims['width']} cm
+                    📐 <b>Height:</b> {dims['height']} cm
+                    📍 <b>Address:</b> {data['delivery_address']}
+                    🆔 <b>Package ID:</b> {package_id}
+                    🏢 <b>Warehouse ID:</b> {warehouse_id}
+                    🚚 <b>Status:</b> in warehouse
+                    """
+                self.bot.sendMessage(from_id, text=details_message, parse_mode="HTML")
+
 
                 # Mark as submitted to block further edits
                 self.chatIDs[from_id]["package_submitted"] = True
@@ -621,8 +633,8 @@ class RESTBot:
             if response.status_code in [200, 204]:  
              self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
              
-             self.chatIDs[chat_id]["package_status"] = None  # reset any status
-             self.bot.sendMessage(chat_id, text="❗ You can no longer change status for this package. It has been reassigned.")
+             #self.chatIDs[chat_id]["package_status"] = None  # reset any status
+             #self.bot.sendMessage(chat_id, text="❗ You can no longer change status for this package. It has been reassigned.")
              self.send_driver_menu(chat_id) 
 
             else:
@@ -937,7 +949,7 @@ class RESTBot:
         
         # if package "in warehouse" 
         elif package_details and "🚦 *status:* in warehouse" in package_details.lower():
-            package_details += "\n\nThe package is currently *in our warehouse*, awaiting pickup by a driver."
+            package_details += "\n\nThe package is currently *in the warehouse*, awaiting pickup by a driver."
   
         if package_details:
             if reply_markup:
@@ -1167,7 +1179,7 @@ class RESTBot:
             f"&markers=color:red|label:P|{lat},{lon}"
             f"&key={self.google_maps_key}"
         )
-        logging.debug(f"🔑 Using Google Maps key: {self.google_maps_key}")
+        #logging.debug(f"🔑 Using Google Maps key: {self.google_maps_key}")
 
         # 5a) Fetch and validate
         map_resp = requests.get(static_url, timeout=5)
