@@ -603,35 +603,42 @@ class RESTBot:
             self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while confirming delivery.")
 
 
-    def cancel_package_assignment(self, chat_id, package_id):
+        def cancel_package_assignment(self, chat_id, package_id):
         """Set the driver_id to None in the package document in MongoDB."""
 
-        # Check if package is already in-transit
-        if self.chatIDs[chat_id].get("package_status") == "in-transit":
-           self.bot.sendMessage(chat_id, text="⚠️ The package is already 'in-transit' and cannot be reassigned.")
-       
-           return  
-        
         url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
-        data = {"driver_id": None}  # Set driver_id to None
+
+        
+        try:
+            package_resp = requests.get(url, timeout=5)
+            if package_resp.status_code == 200:
+                package = package_resp.json()
+                status = package.get("status", "").lower()
+
+                if status == "in-transit":
+                    self.bot.sendMessage(chat_id, text="⚠️ The package is already 'in-transit' and cannot be reassigned.")
+                    return
+            else:
+                self.bot.sendMessage(chat_id, text="❌ Failed to fetch package status from database.")
+                return
+        except Exception as e:
+            logging.error(f"❌ Error checking package status: {str(e)}")
+            self.bot.sendMessage(chat_id, text="⚠️ Could not verify package status. Please try again.")
+            return
+
+        # reassignement 
+        data = {"driver_id": None}
 
         try:
             response = requests.put(url, json=data, timeout=5)
-
-            if response.status_code in [200, 204]:  
-             self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
-             
-             self.chatIDs[chat_id]["package_status"] = None  # reset any status
-             self.bot.sendMessage(chat_id, text="❗ You can no longer change status for this package. It has been reassigned.")
-             self.send_driver_menu(chat_id) 
-
+            if response.status_code in [200, 204]:
+                self.bot.sendMessage(chat_id, text="🔄 Order has been cancelled and is now available for other Drivers.")
+                self.send_driver_menu(chat_id)
             else:
-             self.bot.sendMessage(chat_id, text="⚠️ Failed to cancel the order. Please try again.")
-
+                self.bot.sendMessage(chat_id, text="⚠️ Failed to cancel the order. Please try again.")
         except Exception as e:
-           logging.error(f"❌ Error cancelling order: {str(e)}")
-           self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while cancelling the order.")
-
+            logging.error(f"❌ Error cancelling order: {str(e)}")
+            self.bot.sendMessage(chat_id, text="⚠️ An unexpected error occurred while cancelling the order.")
     
     def send_start_menu(self, chat_id):
         """Send the start menu to the user."""
