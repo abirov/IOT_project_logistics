@@ -1,101 +1,42 @@
 version: '3.9'
 
 services:
-  mongodb:
-    image: mongo:4.4
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-  catalog_service:
-    build:
-      context: ./app/catalog_service
-    container_name: catalog_service
-    depends_on:
-      - mongodb
-      - mqtt_broker
-    ports:
-      - "8080:8080"
-
-  reputation_service:
+  reputation:
     build:
       context: ./app/reputation_service
-    container_name: reputation_service
-    depends_on:
-      - catalog_service
-
-  vehicle_simulation:
-    build:
-      context: ./app/simulation_service
-    container_name: vehicle_simulation
-    depends_on:
-      - mqtt_broker
-    environment:
-      - MQTT_BROKER=mqtt_broker
-
-  web_app:
-    build:
-      context: ./app/web_app
-    container_name: web_app
-    depends_on:
-      - catalog_service
+    container_name: reputation_container
+    command: python reputation.py
     ports:
       - "8081:8081"
+
+  web:
+    build:
+      context: ./app/web_app
+    container_name: web_container
+    command: python web.py
+    ports:
+      - "8082:8082"
+
+  influx:
+    build:
+      context: ./app/DB_service
+    container_name: db_container
+    command: python influxservice.py
+    ports:
+      - "8083:8083"
+
+  catalog:
+    build:
+      context: ./app/catalog_service
+    container_name: catalog_container
+    command: python catalog2.py
+    ports:
+      - "8084:8084"
 
   telegram_bot:
     build:
       context: ./telegram_bot
     container_name: telegram_bot
-    depends_on:
-      - catalog_service
-
-  telegraf:
-    build:
-      context: ./config
-    container_name: telegraf
-    depends_on:
-      - mongodb
-      - influxdb
-    environment:
-      - HOST_PROC=/rootfs/proc
-      - HOST_SYS=/rootfs/sys
-      - HOST_ETC=/rootfs/etc
-    volumes:
-      - /proc:/rootfs/proc:ro
-      - /sys:/rootfs/sys:ro
-      - /etc:/rootfs/etc:ro
-
-  mqtt_broker:
-    image: eclipse-mosquitto:latest
-    container_name: mqtt_broker
+    command: python bot.py
     ports:
-      - "1883:1883"
-    volumes:
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_log:/mosquitto/log
-
-  influxdb:
-    image: influxdb:1.8
-    container_name: influxdb
-    ports:
-      - "8086:8086"
-    volumes:
-      - influxdb_data:/var/lib/influxdb
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-
-volumes:
-  mongo_data:
-  influxdb_data:
-  mosquitto_data:
-  mosquitto_log:
-  grafana_data:
+      - "8085:8085"
