@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Run the application
-CMD ["python", "reputation_service.py"]
+CMD ["python", "catalog2.py"]
