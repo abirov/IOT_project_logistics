@@ -1,3 +1,4 @@
+ONLY FOR OLD CATALOG VERSION
 **Driver Endpoints (/drivers)
 
     GET /drivers/list_all → List all drivers
