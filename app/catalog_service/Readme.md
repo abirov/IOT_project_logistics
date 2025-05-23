@@ -1,5 +1,6 @@
 FOR OLD CATALOG
-**Driver Endpoints (/drivers)
+
+  **Driver Endpoints (/drivers)
 
 GET /drivers/list_all → List all drivers
 GET /drivers?driver_id=<id> → Get driver by ID
@@ -10,8 +11,9 @@ POST /drivers → Create a new driver
 
 PUT /drivers?driver_id=<id> → Update driver by ID
 PUT /drivers/reputation?driver_id=<id> → Update driver reputation
-  
+
 DELETE /drivers?driver_id=<id> → Delete driver by ID
+
 **Warehouse Endpoints (/warehouse)
 
 GET /warehouse/list_all → List all warehouses
@@ -23,6 +25,7 @@ POST /warehouse → Create a new warehouse
 PUT /warehouse?warehouse_id=<id> → Update warehouse by ID
   
 DELETE /warehouse?warehouse_id=<id> → Delete warehouse by ID
+
 **Vehicle Endpoints (/vehicle)
 
 GET /vehicle?vehicle_id=<id> → Get vehicle by ID
@@ -33,6 +36,7 @@ POST /vehicle → Create a new vehicle
 PUT /vehicle?vehicle_id=<id> → Update vehicle by ID
   
 DELETE /vehicle?vehicle_id=<id> → Delete vehicle by ID
+
 **Feedback Endpoints (/feedback)
 
 GET /feedback?feedback_id=<id> → Get feedback by ID
