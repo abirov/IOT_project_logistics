@@ -1,53 +1,53 @@
-import time, random, json
-from datetime import datetime
-import paho.mqtt.publish as publish
+import paho.mqtt.client as mqtt
+import time
+import random
+import json
+import signal
+import sys
 
-# ==== CONFIGURATION ====
-vehicle_ids = [
-    "09102cd8-c063-4af1-8269-3b29f137d975",
-    "af91581d-a0b2-4b96-a67c-73b46383c14f",
-    "vehicle_3",
-    "600fc6f9-7b50-4550-b311-e6f481923b79"   # <<< my VEHICLE
-]
+class VehicleSimulation:
+    def __init__(self, broker_url, port, topic):
+        self.broker_url = broker_url
+        self.port = port
+        self.topic = topic
+        self.client = mqtt.Client()
+        self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
+        signal.signal(signal.SIGINT, self.handle_exit)  # Handle Ctrl+C
 
-broker          = "localhost"
-port            = 1883
-topic_prefix           = "location/vehicle"
-interval_seconds= 10    # 1 min
+    def on_connect(self, client, userdata, flags, rc):
+        print(f"Connected with result code {rc}")
 
-# Torino bounding box
-LAT_MIN, LAT_MAX = 45.0410, 45.0910
-LON_MIN, LON_MAX = 7.6350, 7.7050
+    def on_disconnect(self, client, userdata, rc):
+        print(f"Disconnected with result code {rc}")
 
-def generate_random_coordinate(prev_lat=None, prev_lon=None, step=0.0005):
-    if prev_lat is None or prev_lon is None:
-        return round(random.uniform(LAT_MIN, LAT_MAX), 6), round(random.uniform(LON_MIN, LON_MAX), 6)
-    lat = min(max(prev_lat + random.uniform(-step, step), LAT_MIN), LAT_MAX)
-    lon = min(max(prev_lon + random.uniform(-step, step), LON_MIN), LON_MAX)
-    return round(lat, 6), round(lon, 6)
+    def simulate_vehicle_updates(self, vehicle_id):
+        try:
+            self.client.connect(self.broker_url, self.port, 60)
+            self.client.loop_start()
+            statuses = ['In Transit', 'Delivered', 'Pending', 'Delayed']
+            while True:
+                status = random.choice(statuses)
+                message = json.dumps({'vehicle_id': vehicle_id, 'status': status})
+                self.client.publish(self.topic, message)
+                print(f"Published: {message}")
+                time.sleep(5)
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            self.client.loop_stop()
+            self.client.disconnect()
 
-# initialize positions
-positions = {vid: generate_random_coordinate() for vid in vehicle_ids}
+    def handle_exit(self, sig, frame):
+        print("Exiting gracefully...")
+        self.client.loop_stop()
+        self.client.disconnect()
+        sys.exit(0)
 
-print(" Simulator started — publishing to", broker)
-
-try:
-    while True:
-        for vid in vehicle_ids:
-            prev_lat, prev_lon = positions[vid]
-            lat, lon = generate_random_coordinate(prev_lat, prev_lon)
-            msg = {
-                "vehicle_id": vid,
-                "latitude": lat,
-                "longitude": lon,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "measurement": "LOCATION"
-            }
-            payload = json.dumps(msg)
-            print("ON", payload)
-            publish.single(f"{topic_prefix}/{vid}", payload=payload,
-                           hostname=broker, port=port)
-            positions[vid] = (lat, lon)
-        time.sleep(interval_seconds)
-except KeyboardInterrupt:
-    print("\n Simulator stopped")
+if __name__ == '__main__':
+    broker_url = 'localhost'
+    port = 1883
+    topic = 'vehicles/status'
+    vehicle_id = '60b85c5f3e8b9a4a988d4e3b'
+    simulation = VehicleSimulation(broker_url, port, topic)
+    simulation.simulate_vehicle_updates(vehicle_id)
