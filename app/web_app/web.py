@@ -721,7 +721,7 @@ class WebApp:
                 return "<h1>No vehicle assigned to this driver.</h1>"
 
             # Get location from InfluxService
-            influx_url = os.getenv('INFLUX_URL', 'http://localhost:8083')
+            influx_url = os.getenv('INFLUX_URL', 'http://influx:8083')
             location_response = requests.get(f"{influx_url}/location", params={"vehicle_id": vehicle_id, "period": "2h"})
             location_response.raise_for_status()
             locations = location_response.json()
@@ -775,9 +775,9 @@ class WebApp:
 
 
 if __name__ == '__main__':
-    catalog_url = os.getenv('CATALOG_URL', 'http://localhost:8080')
-    reputation_url = os.getenv('REPUTATION_URL', 'http://localhost:8082')
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
+    catalog_url = os.getenv('CATALOG_URL', 'http://catalog:8084')
+    reputation_url = os.getenv('REPUTATION_URL', 'http://reputation:8081')
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8082})
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config = {
         '/static': {
