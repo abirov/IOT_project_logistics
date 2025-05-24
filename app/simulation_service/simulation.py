@@ -29,7 +29,7 @@ def generate_random_coordinate(prev_lat=None, prev_lon=None, step=0.0005):
 # initialize positions
 positions = {vid: generate_random_coordinate() for vid in vehicle_ids}
 
-print("🚀 Simulator started — publishing to", broker)
+print(" Simulator started — publishing to", broker)
 
 try:
     while True:
@@ -44,10 +44,10 @@ try:
                 "measurement": "LOCATION"
             }
             payload = json.dumps(msg)
-            print("📡", payload)
+            print("ON", payload)
             publish.single(f"{topic_prefix}/{vid}", payload=payload,
                            hostname=broker, port=port)
             positions[vid] = (lat, lon)
         time.sleep(interval_seconds)
 except KeyboardInterrupt:
-    print("\n🛑 Simulator stopped")
+    print("\n Simulator stopped")
