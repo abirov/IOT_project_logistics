@@ -40,3 +40,24 @@ services:
     command: python bot.py
     ports:
       - "8085:8085"
+
+
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+
+  simulator:
+    build:
+      context: ./app/simulation_service
+    container_name: simulator
+    command: python Test_simulation.py
+    depends_on:
+      - mosquitto
