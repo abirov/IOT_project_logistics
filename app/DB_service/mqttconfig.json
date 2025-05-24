@@ -1,5 +1,5 @@
 {
-    "broker": "localhost",
+    "broker": "mosquitto",
     "port": 1883,
     "topic": "location/vehicle/+"
   }

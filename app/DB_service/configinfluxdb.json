@@ -1,5 +1,5 @@
 {
-    "url": "http://localhost:8086",
+    "url": "http://localhost:8083",
     "token": "mytoken",
     "org": "myorg",
     "bucket": "mybucket"
