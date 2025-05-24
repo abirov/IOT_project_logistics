@@ -315,6 +315,6 @@ if __name__ == '__main__':
     cherrypy.tree.mount(warehouseServer(), '/warehouses', conf)
     cherrypy.tree.mount(packageServer(), '/packages', conf)
     cherrypy.tree.mount(FeedbackServer(), '/feedbacks', conf)
-    cherrypy.config.update({'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_port': 8084})
     cherrypy.engine.start()
     cherrypy.engine.block()
