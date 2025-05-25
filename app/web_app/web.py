@@ -160,7 +160,7 @@ class WebApp:
             driver = driver_response.json()
             cherrypy.log(f"Driver data: {driver}")
             # reputation directly from Reputation Service
-            reputation_url = f"{self.reputation_url}/Reputation"
+            reputation_url = f"{self.reputation_url}/reputation"
             reputation_response = requests.put(reputation_url, json={"driver_id": driver_id})  # Send driver_id in JSON
             reputation_response.raise_for_status()
             reputation_data = reputation_response.json()
