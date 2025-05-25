@@ -4,6 +4,7 @@ This ensures scalable, portable, and isolated service deployment.
 The platform integrates two key communication paradigms: publish/subscribe (via MQTT) and request/response (via REST).
 
   System Components
+
 1.Device Connectors for Vehicles
 
   Communication:
@@ -49,6 +50,7 @@ Operates over MQTT.
 Deployment:
 Docker container for the message broker to handle real-time communication.
 
+
 7.Data Analytics
 Driver Reputation System
 Function:
@@ -65,6 +67,7 @@ Integration:
 Operates within Telegram for user convenience.
 Deployment:
 Dockerized to ensure consistent performance.
+
 
 10.Timeseries DB Connector
 
