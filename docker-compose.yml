@@ -32,6 +32,9 @@ services:
     command: python catalog2.py
     ports:
       - "8084:8084"
+    depends_on:
+      - mongo
+
 
   telegram_bot:
     build:
