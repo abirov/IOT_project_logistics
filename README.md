@@ -13,18 +13,10 @@ MQTT for continuous vehicle updates.
 Deployed on Raspberry Pi hardware, simulated for scalability.
 Dockerized for consistent deployment.
 
-2.Device Connectors for Logistics Points
-
-Function:
-Link between logistics points (warehouses, delivery points, users) and the platform.
-Control actions like locking/unlocking doors and provide warehouse visibility.
-Deployment:
-Docker containers for easy scaling and management.
-
-3.User Web App
+2.User Web App
 
 Features:
-Track vehicle status, control delivery points, and view an analytical map.
+Track vehicle status,manage driver data,manage warehouse data.
 Deployment:
 Dockerized web application for consistent user experience across environments.
 
@@ -59,30 +51,16 @@ Docker container for the message broker to handle real-time communication.
 
 7.Data Analytics
 Driver Reputation System
-
 Function:
-Evaluates driver performance (punctuality, handling, feedback).
-Operation:
-Uses MQTT updates for real-time scoring.
+Evaluates driver performance .
 Deployment:
 Containerized service for efficient processing and evaluation.
 
-8.Warehouse Reputation System
 
-Function:
-Assesses warehouse efficiency (inventory accuracy, order times, error rates).
-Operation:
-Uses REST for data aggregation and scoring.
-Deployment:
-Dockerized for easy integration and scaling.
-Additional Components
-
-9.Telegram Bot
+8.Telegram Bot
 
 Role:
 Provides real-time delivery status notifications.
-Function:
-Retrieves info from the Catalog via MQTT and displays results via REST.
 Integration:
 Operates within Telegram for user convenience.
 Deployment:
@@ -90,12 +68,10 @@ Dockerized to ensure consistent performance.
 
 10.Timeseries DB Connector
 
-Tool:
-Telegraf for collecting and reporting metrics.
 Function:
 Ingests data from various sources and sends it to InfluxDB.
 Frameworks:
-Utilizes CherryPy and Flask.
+Utilizes CherryPy.
 Deployment:
 Containerized for consistent metric collection and reporting.
 Docker Integration
