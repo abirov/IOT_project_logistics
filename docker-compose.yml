@@ -8,6 +8,8 @@ services:
     command: python reputation.py
     ports:
       - "8081:8081"
+    networks:
+      - iotnet
 
   web:
     build:
@@ -16,6 +18,8 @@ services:
     command: python web.py
     ports:
       - "8082:8082"
+    networks:
+      - iotnet
 
   influx:
     build:
@@ -24,6 +28,11 @@ services:
     command: python influxservice.py
     ports:
       - "8083:8083"
+    volumes:
+      - influx-data:/var/lib/influxdb
+    networks:
+      - iotnet
+
 
   catalog:
     build:
@@ -32,6 +41,8 @@ services:
     command: python catalog2.py
     ports:
       - "8084:8084"
+    networks:
+      - iotnet
 
   telegram_bot:
     build:
@@ -40,8 +51,8 @@ services:
     command: python bot.py
     ports:
       - "8085:8085"
-
-
+    networks:
+      - iotnet
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -52,7 +63,8 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
-
+    networks:
+      - iotnet
 
   simulator:
     build:
@@ -61,6 +73,8 @@ services:
     command: python Test_simulation.py
     depends_on:
       - mosquitto
+    networks:
+      - iotnet
 
   mongo:
     image: mongo:5.0
@@ -69,6 +83,13 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    networks:
+      - iotnet
 
 volumes:
     mongo-data:
+    influx-data:
+
+networks:
+  iotnet:
+    driver: bridge
