@@ -10,7 +10,7 @@ class ReputationService:
     exposed = True 
 
     def __init__(self):
-        self.catalog_url = os.getenv('CATALOG_URL', 'http://localhost:8080')
+        self.catalog_url = os.getenv('CATALOG_URL', 'http://catalog:8084')
         if not self.catalog_url:
             raise ValueError("CATALOG_URL environment variable not set.")
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         }
     }
 
-    cherrypy.tree.mount(ReputationServer(), "/Reputation", conf)
+    cherrypy.tree.mount(ReputationServer(), "/reputation", conf)
     cherrypy.config.update({'server.socket_port': 8081})
     cherrypy.engine.start()
     cherrypy.engine.block()
