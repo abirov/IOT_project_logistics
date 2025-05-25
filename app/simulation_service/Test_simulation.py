@@ -4,10 +4,10 @@ import paho.mqtt.publish as publish
 
 # ==== CONFIGURATION ====
 vehicle_ids = [
-    "09102cd8-c063-4af1-8269-3b29f137d975",
     "af91581d-a0b2-4b96-a67c-73b46383c14f",
-    "vehicle_3",
-    "600fc6f9-7b50-4550-b311-e6f481923b79"   # <<< my VEHICLE
+    "09102cd8-c063-4af1-8269-3b29f137d975",
+    "01759d5f-2bb2-448e-b91d-fa5beefe9fd9",
+    "b4615184-2e1b-40be-aa07-9b1882a35955"   # <<< my VEHICLE
 ]
 
 broker = "host.docker.internal"
