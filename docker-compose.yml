@@ -30,6 +30,7 @@ services:
       - "8083:8083"
     volumes:
       - influx-data:/var/lib/influxdb
+
     networks:
       - iotnet
 
@@ -83,6 +84,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
     networks:
       - iotnet
 
