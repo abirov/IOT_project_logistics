@@ -68,6 +68,8 @@ Operates within Telegram for user convenience.
 Deployment:
 Dockerized to ensure consistent performance.
 
+Telegram bot id: @IOTLogistic1_bot
+
 
 10.Timeseries DB Connector
 
@@ -83,3 +85,10 @@ Docker Compose is used for orchestrating multi-container applications.
 Ensures portability, scalability, and isolation of services.
 Simplifies deployment and management across different environments.
 This structure ensures a robust, scalable, and efficient IoT platform for logistics and scheduling, leveraging Docker for containerization to enhance deployment and management.
+
+You can watch the Promo video through this link:
+https://youtube.com/shorts/4wzyDJ2WHHQ?si=DOJgV0-ZlWT8I_7j
+
+and also the Demo video:
+https://youtu.be/cWULuRySm6c?si=QH4a8WmRogEBWF4s
+

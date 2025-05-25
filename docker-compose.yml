@@ -32,9 +32,6 @@ services:
     command: python catalog2.py
     ports:
       - "8084:8084"
-    depends_on:
-      - mongo
-
 
   telegram_bot:
     build:
@@ -70,4 +67,8 @@ services:
     container_name: mongo_container
     ports:
       - "27017:27017"
-   
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+    mongo-data:
