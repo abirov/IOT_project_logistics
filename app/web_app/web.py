@@ -57,7 +57,7 @@ class WebApp:
                 #"vehicle_id":vehicle_id,
                 "car_model":car_model,
             }
-            response = requests.post("http://catalog:8084/drivers/drivers", json=data)
+            response = requests.post(f"{self.catalog_url}/drivers/drivers", json=data)
             response.raise_for_status()
             result = response.json()
             driver_id = result.get("driver_id")
@@ -82,7 +82,7 @@ class WebApp:
     def authenticate(self, driver_id):
         """Authenticate Driver by ID"""
         try:
-            url = "http://catalog:8084/drivers/drivers"
+            url = f"{self.catalog_url}/drivers/drivers"
             cherrypy.log(f"Authenticating driver_id: {driver_id}")
             response = requests.get(url, params={"driver_id": driver_id})
             response.raise_for_status()
@@ -111,7 +111,7 @@ class WebApp:
     def authenticate(self, driver_email):
         """Authenticate Driver by Email"""
         try:
-            url = "http://catalog:8084/drivers/drivers"
+            url = f"{self.catalog_url}/drivers/drivers"
             cherrypy.log(f"Authenticating driver_email: {driver_email}")
 
             #driver details using the email
@@ -154,7 +154,7 @@ class WebApp:
         """Driver Dashboard"""
         try:
             # driver details
-            driver_url = "http://catalog:8084/drivers/drivers"
+            driver_url = f"{self.catalog_url}/drivers/drivers"
             driver_response = requests.get(driver_url, params={"driver_id": driver_id})
             driver_response.raise_for_status()
             driver = driver_response.json()
@@ -169,7 +169,7 @@ class WebApp:
 
 
             # feedbacks for the driver
-            feedback_url = "http://catalog:8084/feedbacks/feedbacks"
+            feedback_url = f"{self.catalog_url}/feedbacks/feedbacks"
             feedback_response = requests.get(feedback_url, params={"driver_id": driver_id})
             
             if feedback_response.status_code == 200:
@@ -210,14 +210,14 @@ class WebApp:
                 feedback_list = []
             
             # Fetch available packages
-            available_package_url = "http://catalog:8084/packages/packages?no_driver=true"
+            available_package_url = f"{self.catalog_url}/packages/packages?no_driver=true"
             available_response = requests.get(available_package_url)
             available_response.raise_for_status()
             available_packages = available_response.json() or []
 
             # Fetch selected packages
             try:
-                selected_package_url = f"http://catalog:8084/packages/packages?driver_id={driver_id}"
+                selected_package_url = f"{self.catalog_url}/packages/packages?driver_id={driver_id}"
                 selected_response = requests.get(selected_package_url)
                 selected_response.raise_for_status()
                 selected_packages = selected_response.json() or []
@@ -250,7 +250,7 @@ class WebApp:
             payload = {"driver_id": driver_id}
 
             # update package with  driver_id
-            select_package_url = f"http://catalog:8084/packages/packages?package_id={package_id}"
+            select_package_url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
             response = requests.put(select_package_url, json=payload)
             response.raise_for_status()
 
@@ -272,7 +272,7 @@ class WebApp:
         try:
             # Define the update payload
             payload = {"status": new_status}
-            url = f"http://catalog:8084/packages/packages?package_id={package_id}"
+            url = f"{self.catalog_url}/packages/packages?package_id={package_id}"
 
             # Send the update request to MyCatalog
             response = requests.put(url, json=payload)
@@ -294,7 +294,7 @@ class WebApp:
         
         try:
             #  current driver data  fetching
-            response = requests.get("http://catalog:8084/drivers/drivers", params={"driver_id": driver_id})
+            response = requests.get(f"{self.catalog_url}/drivers/drivers", params={"driver_id": driver_id})
             response.raise_for_status()
             driver_data = response.json()
             # Render the edit_profile.html template
@@ -320,7 +320,7 @@ class WebApp:
                 "license_number": license_number
             }
             
-            url = f"http://catalog:8084/drivers/drivers?driver_id={driver_id}"
+            url = f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}"
             response = requests.put(url, json=data)
             response.raise_for_status()
             return self.dashboard(driver_id)  # go to dashboard 
@@ -335,7 +335,7 @@ class WebApp:
         
         try:
             
-            url = f"http://catalog:8084/drivers/drivers?driver_id={driver_id}"
+            url = f"{self.catalog_url}/drivers/drivers?driver_id={driver_id}"
             response = requests.delete(url)
             response.raise_for_status()
 
@@ -388,7 +388,7 @@ class WebApp:
                 "email": email,
             }
             
-            response = requests.post("http://catalog:8084/warehouses/warehouses", json=data)
+            response = requests.post(f"{self.catalog_url}/warehouses/warehouses", json=data)
             response.raise_for_status()
             result = response.json()
             warehouse_id = result.get("warehouse_id")
@@ -414,7 +414,7 @@ class WebApp:
     def warehouse_authenticate(self, warehouse_id):
         """Authenticate Warehouse by ID"""
         try:
-            url = "http://catalog:8084/warehouses/warehouses"
+            url = f"{self.catalog_url}/warehouses/warehouses"
             cherrypy.log(f"Authenticating warehouse_id: {warehouse_id}")
             response = requests.get(url, params={"warehouse_id": warehouse_id})
             response.raise_for_status()
@@ -436,7 +436,7 @@ class WebApp:
     @cherrypy.expose
     def warehouse_authenticate(self,warehouse_email):
         try:
-            url="http://catalog:8084/warehouses/warehouses"
+            url=f"{self.catalog_url}/warehouses/warehouses"
             cherrypy.log(f"Authenticating warehouse_email: {warehouse_email}")
             response = requests.get(url, params={"warehouse_email": warehouse_email})
             response.raise_for_status()
@@ -476,7 +476,7 @@ class WebApp:
         """Warehouse Dashboard"""
         try:
             #  warehouse details
-            warehouse_url = f"http://catalog:8084/warehouses/warehouses"
+            warehouse_url = f"{self.catalog_url}/warehouses/warehouses"
             warehouse_response = requests.get(warehouse_url, params={"warehouse_id": warehouse_id})
             warehouse_response.raise_for_status()
             warehouse = warehouse_response.json()
@@ -484,7 +484,7 @@ class WebApp:
             
              
             #  package history for the warehouse
-            packages_url = f"http://catalog:8084/packages/packages"
+            packages_url = f"{self.catalog_url}/packages/packages"
             packages_response = requests.get(packages_url, params={"warehouse_id": warehouse_id})
             packages_response.raise_for_status()
             packages = packages_response.json()
@@ -496,7 +496,7 @@ class WebApp:
             # feedbacks related to the extracted package IDs
             feedbacks = []
             if package_ids:
-                feedback_url = f"http://catalog:8084/feedbacks/feedbacks"
+                feedback_url = f"{self.catalog_url}/feedbacks/feedbacks"
                 feedback_response = requests.get(feedback_url, params=[("package_id", pid) for pid in package_ids])
                 feedback_response.raise_for_status()
                 feedbacks = feedback_response.json()
@@ -526,7 +526,7 @@ class WebApp:
         """
         try:
             # current warehouse data from catalog
-            warehouse_url = "http://catalog:8084/warehouses/warehouses"
+            warehouse_url = f"{self.catalog_url}/warehouses/warehouses"
             response = requests.get(warehouse_url, params={"warehouse_id": warehouse_id})
             response.raise_for_status()
             warehouse_data = response.json()  # {"_id": ..., "name": ..., "address": {...}, ...}
@@ -559,7 +559,7 @@ class WebApp:
             }
 
            
-            url = f"http://catalog:8084/warehouses/warehouses?warehouse_id={warehouse_id}"
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
             response = requests.put(url, json=data)
             response.raise_for_status()
 
@@ -579,7 +579,7 @@ class WebApp:
         """
         try:
             
-            url = f"http://catalog:8084/warehouses/warehouses?warehouse_id={warehouse_id}"
+            url = f"{self.catalog_url}/warehouses/warehouses?warehouse_id={warehouse_id}"
             response = requests.delete(url)
             response.raise_for_status()
 
@@ -629,7 +629,7 @@ class WebApp:
             cherrypy.log(f"Prepared package data: {package_data}")
 
             # Send POST request
-            response = requests.post(f"http://catalog:8084/packages/packages", json=package_data)
+            response = requests.post(f"{self.catalog_url}/packages/packages", json=package_data)
             response.raise_for_status()
 
             return self.warehouse_dashboard(warehouse_id)
@@ -659,7 +659,7 @@ class WebApp:
             cherrypy.log(f"Feedback data being submitted: {feedback_data}")
 
             # Send the feedback 
-            response = requests.post(f"http://catalog:8084/feedbacks/feedbacks", json=feedback_data)
+            response = requests.post(f"{self.catalog_url}/feedbacks/feedbacks", json=feedback_data)
             response.raise_for_status()
             
             rep_url = f"{self.reputation_url}/Reputation"
@@ -685,7 +685,7 @@ class WebApp:
         """Search package by ID"""
         try:
             
-            url = f"http://catalog:8084/packages"
+            url = f"{self.catalog_url}/packages"
             response = requests.get(url, params={"package_id": package_id})
             response.raise_for_status()
             package = response.json()
@@ -701,7 +701,7 @@ class WebApp:
         """Track vehicle based on package ID"""
         try:
             # Get package info
-            package_url = "http://catalog:8084/packages/packages"
+            package_url = f"{self.catalog_url}/packages/packages"
             package_response = requests.get(package_url, params={"package_id": package_id})
             package_response.raise_for_status()
             package = package_response.json()
@@ -711,7 +711,7 @@ class WebApp:
                 return "<h1>No driver assigned to this package.</h1>"
 
             # Get driver info to find vehicle_id
-            driver_url = "http://catalog:8084/drivers/drivers"
+            driver_url = f"{self.catalog_url}/drivers/drivers"
             driver_response = requests.get(driver_url, params={"driver_id": driver_id})
             driver_response.raise_for_status()
             driver = driver_response.json()
@@ -757,7 +757,7 @@ class WebApp:
         Fetches the list of package IDs belonging to a warehouse.
         """
         try:
-            package_url = "http://catalog:8084/packages/packages"
+            package_url = f"{self.catalog_url}/packages/packages"
             response = requests.get(package_url, params={"warehouse_id": warehouse_id})
             response.raise_for_status()
             packages = response.json()
