@@ -10,7 +10,7 @@ vehicle_ids = [
     "b4615184-2e1b-40be-aa07-9b1882a35955"   # <<< my VEHICLE
 ]
 
-broker = "host.docker.internal"
+broker = "mosquitto"
 
 port            = 1883
 topic_prefix           = "location/vehicle"
