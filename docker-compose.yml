@@ -1,6 +1,8 @@
 version: '3.9'
 
 services:
+  # ===================== MICROSERVICES =====================
+
   reputation:
     build:
       context: ./app/reputation_service
@@ -8,6 +10,8 @@ services:
     command: python reputation.py
     ports:
       - "8081:8081"
+    env_file:
+      - .env
     networks:
       - iotnet
 
@@ -18,22 +22,10 @@ services:
     command: python web.py
     ports:
       - "8082:8082"
+    env_file:
+      - .env
     networks:
       - iotnet
-
-  influx:
-    build:
-      context: ./app/DB_service
-    container_name: db_container
-    command: python influxservice.py
-    ports:
-      - "8083:8083"
-    volumes:
-      - influx-data:/var/lib/influxdb
-
-    networks:
-      - iotnet
-
 
   catalog:
     build:
@@ -42,6 +34,8 @@ services:
     command: python catalog2.py
     ports:
       - "8084:8084"
+    env_file:
+      - .env
     networks:
       - iotnet
 
@@ -52,8 +46,63 @@ services:
     command: python bot.py
     ports:
       - "8085:8085"
+    env_file:
+      - .env
     networks:
       - iotnet
+
+  simulator:
+    build:
+      context: ./app/simulation_service
+    container_name: simulator
+    command: python Test_simulation.py
+    depends_on:
+      - mosquitto
+    env_file:
+      - .env
+    networks:
+      - iotnet
+
+  # ==================== DATABASES =====================
+
+  mongo:
+    image: mongo:5.0
+    container_name: mongo_container
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - iotnet
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    env_file:
+      - .env
+    volumes:
+      - influxdb-storage:/var/lib/influxdb2
+    networks:
+      - iotnet
+
+  # Python-based InfluxDB writer/adapter
+  influx_adapter:
+    build:
+      context: ./app/DB_service
+    container_name: db_container
+    command: python influxservice.py
+    depends_on:
+      - influxdb
+    ports:
+      - "8090:8086"
+    env_file:
+      - .env
+    networks:
+      - iotnet
+
+  # ====================== MQTT =====================
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -67,30 +116,9 @@ services:
     networks:
       - iotnet
 
-  simulator:
-    build:
-      context: ./app/simulation_service
-    container_name: simulator
-    command: python Test_simulation.py
-    depends_on:
-      - mosquitto
-    networks:
-      - iotnet
-
-  mongo:
-    image: mongo:5.0
-    container_name: mongo_container
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d
-    networks:
-      - iotnet
-
 volumes:
-    mongo-data:
-    influx-data:
+  mongo-data:
+  influxdb-storage:
 
 networks:
   iotnet:
