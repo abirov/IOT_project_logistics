@@ -1,22 +1,16 @@
+from pymongo import MongoClient
+import paho.mqtt.publish as publish
 import time, random, json
 from datetime import datetime
-import paho.mqtt.publish as publish
 
 # ==== CONFIGURATION ====
-vehicle_ids = [
-    "af91581d-a0b2-4b96-a67c-73b46383c14f",
-    "09102cd8-c063-4af1-8269-3b29f137d975",
-    "01759d5f-2bb2-448e-b91d-fa5beefe9fd9",
-    "b4615184-2e1b-40be-aa07-9b1882a35955"   # <<< my VEHICLE
-]
+mongo_uri = "mongodb://mongo:27017/"
+mqtt_broker = "mosquitto"
+mqtt_port = 1883
+topic_prefix = "location/vehicle"
+interval_seconds = 10
+refresh_every_n_cycles = 6
 
-broker = "mosquitto"
-
-port            = 1883
-topic_prefix           = "location/vehicle"
-interval_seconds= 10    # 1 min
-
-# Torino bounding box
 LAT_MIN, LAT_MAX = 45.0410, 45.0910
 LON_MIN, LON_MAX = 7.6350, 7.7050
 
@@ -27,13 +21,44 @@ def generate_random_coordinate(prev_lat=None, prev_lon=None, step=0.0005):
     lon = min(max(prev_lon + random.uniform(-step, step), LON_MIN), LON_MAX)
     return round(lat, 6), round(lon, 6)
 
-# initialize positions
+def get_vehicle_ids_from_mongo():
+    try:
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        db = client["IOT"]
+        collection = db["driver"]
+        vehicle_ids = []
+        for doc in collection.find({}, {"vehicle_id": 1}):
+            if "vehicle_id" in doc:
+                vehicle_ids.append(doc["vehicle_id"])
+        print("✅ Vehicle IDs fetched from MongoDB:", vehicle_ids)
+        return vehicle_ids
+    except Exception as e:
+        print("❌ Error connecting to MongoDB:", e)
+        return []
+
+# ==== MAIN ====
+print("🚀 Simulator starting... connecting to MongoDB & MQTT.")
+
+vehicle_ids = get_vehicle_ids_from_mongo()
+if not vehicle_ids:
+    print("⚠️ No vehicle IDs found. Exiting.")
+    exit(1)
+
 positions = {vid: generate_random_coordinate() for vid in vehicle_ids}
+print("🟢 Starting publishing loop...")
 
-print("🚀 Simulator started — publishing to", broker)
-
+cycle = 0
 try:
     while True:
+        if cycle % refresh_every_n_cycles == 0:
+            updated_ids = get_vehicle_ids_from_mongo()
+            if set(updated_ids) != set(vehicle_ids):
+                print(f"🔄 Vehicle ID list updated: {updated_ids}")
+                vehicle_ids = updated_ids
+                for vid in vehicle_ids:
+                    if vid not in positions:
+                        positions[vid] = generate_random_coordinate()
+
         for vid in vehicle_ids:
             prev_lat, prev_lon = positions[vid]
             lat, lon = generate_random_coordinate(prev_lat, prev_lon)
@@ -47,8 +72,11 @@ try:
             payload = json.dumps(msg)
             print("📡", payload)
             publish.single(f"{topic_prefix}/{vid}", payload=payload,
-                           hostname=broker, port=port)
+                           hostname=mqtt_broker, port=mqtt_port)
             positions[vid] = (lat, lon)
+
+        cycle += 1
         time.sleep(interval_seconds)
+
 except KeyboardInterrupt:
     print("\n🛑 Simulator stopped")
