@@ -1,6 +1,6 @@
 {
-    "url": "http://localhost:8083",
-    "token": "zgaxKvkAtlHoRn8u2LO5roLGQLIVqLwNuShUf50LigKywh2-YgzIPFHJOpRx61dSpmWE7doDENkGazvTTFCRcw==",
-    "org": "myorg",
-    "bucket": "mybucket"
-  }
+  "url": "http://influxdb:8086",
+  "token": "43e6fb828a13ad8ce794df24a9d3406c586212d061743d555def61399979ab5zgaxKvkAtlHoRn8u2LO5roLGQLIVqLwNuShUf50LigKywh2-YgzIPFHJOpRx61dSpmWE7doDENkGazvTTFCRcw==",
+  "org": "myorg",
+  "bucket": "mybucket"
+}
