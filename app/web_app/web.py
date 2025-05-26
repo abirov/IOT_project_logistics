@@ -721,7 +721,7 @@ class WebApp:
                 return "<h1>No vehicle assigned to this driver.</h1>"
 
             # Get location from InfluxService
-            influx_url = os.getenv('INFLUX_URL', 'http://influx:8083')
+            influx_url = os.getenv('INFLUX_URL', 'http://db_container:8086')
             location_response = requests.get(f"{influx_url}/location", params={"vehicle_id": vehicle_id, "period": "2h"})
             location_response.raise_for_status()
             locations = location_response.json()

@@ -2,3 +2,4 @@ influxdb-client
 pandas
 cherrypy
 cherrypy-cors
+paho-mqtt

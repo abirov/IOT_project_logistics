@@ -114,7 +114,7 @@ if __name__ == '__main__':
         }
     }
 
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8083})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8086})
 
     cherrypy.tree.mount(influxconnectoreServer(), '/', conf)
     cherrypy.engine.start()
