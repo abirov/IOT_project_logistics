@@ -1,10 +1,10 @@
 from bson import ObjectId
 
 class Warehouse:
-    def __init__(self, name: str, address: dict , _id: ObjectId =ObjectId() , phone: str = None, email: str = None, reputation: dict = None):
+    def __init__(self, name: str, address: dict, _id=None, phone: str = None, email: str = None, reputation: dict = None):
+        self._id = _id if _id is not None else ObjectId()
         self.name = name
-        self.address = address #ddress = {"street": "123 Main St", "city": "Springfield", "state": "IL", "zip": "62701"}
-        self._id = _id
+        self.address = address
         self.phone = phone
         self.email = email
         self.reputation = reputation if reputation else {"score": 0, "reviews": 0}
@@ -14,13 +14,14 @@ class Warehouse:
     
     def to_dict(self):
         return {
-            "_id": str(self._id) if self._id else None,
+            "_id": str(self._id),
             "name": self.name,
             "address": self.address,
             "phone": self.phone,
             "email": self.email,
             "reputation": self.reputation
         }
+
     @staticmethod   
     def from_dict(data):
         return Warehouse(
@@ -31,4 +32,3 @@ class Warehouse:
             reputation=data["reputation"],
             _id=ObjectId(data["_id"]) if data["_id"] else None
         )
-    
