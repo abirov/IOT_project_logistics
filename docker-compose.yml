@@ -91,7 +91,7 @@ services:
     networks:
       - iotnet
 
-  # Python-based InfluxDB writer/adapter
+  
   influx_adapter:
     build:
       context: ./app/DB_service

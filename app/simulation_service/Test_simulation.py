@@ -30,22 +30,22 @@ def get_vehicle_ids_from_mongo():
         for doc in collection.find({}, {"vehicle_id": 1}):
             if "vehicle_id" in doc:
                 vehicle_ids.append(doc["vehicle_id"])
-        print("✅ Vehicle IDs fetched from MongoDB:", vehicle_ids)
+        print("Vehicle IDs fetched from MongoDB:", vehicle_ids)
         return vehicle_ids
     except Exception as e:
-        print("❌ Error connecting to MongoDB:", e)
+        print("Error connecting to MongoDB:", e)
         return []
 
 # ==== MAIN ====
-print("🚀 Simulator starting... connecting to MongoDB & MQTT.")
+print(" Simulator starting... connecting to MongoDB & MQTT.")
 
 vehicle_ids = get_vehicle_ids_from_mongo()
 if not vehicle_ids:
-    print("⚠️ No vehicle IDs found. Exiting.")
+    print("No vehicle IDs found. Exiting.")
     exit(1)
 
 positions = {vid: generate_random_coordinate() for vid in vehicle_ids}
-print("🟢 Starting publishing loop...")
+print("Starting publishing loop...")
 
 cycle = 0
 try:
@@ -53,7 +53,7 @@ try:
         if cycle % refresh_every_n_cycles == 0:
             updated_ids = get_vehicle_ids_from_mongo()
             if set(updated_ids) != set(vehicle_ids):
-                print(f"🔄 Vehicle ID list updated: {updated_ids}")
+                print(f" Vehicle ID list updated: {updated_ids}")
                 vehicle_ids = updated_ids
                 for vid in vehicle_ids:
                     if vid not in positions:
@@ -70,7 +70,7 @@ try:
                 "measurement": "LOCATION"
             }
             payload = json.dumps(msg)
-            print("📡", payload)
+            print("ON", payload)
             publish.single(f"{topic_prefix}/{vid}", payload=payload,
                            hostname=mqtt_broker, port=mqtt_port)
             positions[vid] = (lat, lon)
@@ -79,4 +79,4 @@ try:
         time.sleep(interval_seconds)
 
 except KeyboardInterrupt:
-    print("\n🛑 Simulator stopped")
+    print("\n Simulator stopped")
