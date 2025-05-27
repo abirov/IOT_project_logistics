@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-CMD ["python", "influxservice.py"]
+CMD ["python", "python mqtt_service.py & influxservice.py"]
