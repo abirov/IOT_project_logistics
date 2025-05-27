@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 import paho.mqtt.publish as publish
 import time, random, json
 from datetime import datetime
@@ -21,9 +22,20 @@ def generate_random_coordinate(prev_lat=None, prev_lon=None, step=0.0005):
     lon = min(max(prev_lon + random.uniform(-step, step), LON_MIN), LON_MAX)
     return round(lat, 6), round(lon, 6)
 
-def get_vehicle_ids_from_mongo():
+def wait_for_mongo(uri, retries=15, delay=3):
+    for i in range(retries):
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=3000)
+            client.server_info()
+            print("Connected to MongoDB")
+            return client
+        except ServerSelectionTimeoutError as e:
+            print(f"Waiting for MongoDB ({i+1}/{retries})... {e}")
+            time.sleep(delay)
+    raise RuntimeError("MongoDB not reachable after multiple attempts.")
+
+def get_vehicle_ids_from_mongo(client):
     try:
-        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
         db = client["IOT"]
         collection = db["driver"]
         vehicle_ids = []
@@ -33,13 +45,14 @@ def get_vehicle_ids_from_mongo():
         print("Vehicle IDs fetched from MongoDB:", vehicle_ids)
         return vehicle_ids
     except Exception as e:
-        print("Error connecting to MongoDB:", e)
+        print("Error querying MongoDB:", e)
         return []
 
 # ==== MAIN ====
-print(" Simulator starting... connecting to MongoDB & MQTT.")
+print("Simulator starting... connecting to MongoDB & MQTT.")
+mongo_client = wait_for_mongo(mongo_uri)
 
-vehicle_ids = get_vehicle_ids_from_mongo()
+vehicle_ids = get_vehicle_ids_from_mongo(mongo_client)
 if not vehicle_ids:
     print("No vehicle IDs found. Exiting.")
     exit(1)
@@ -51,9 +64,9 @@ cycle = 0
 try:
     while True:
         if cycle % refresh_every_n_cycles == 0:
-            updated_ids = get_vehicle_ids_from_mongo()
+            updated_ids = get_vehicle_ids_from_mongo(mongo_client)
             if set(updated_ids) != set(vehicle_ids):
-                print(f" Vehicle ID list updated: {updated_ids}")
+                print(f"Vehicle ID list updated: {updated_ids}")
                 vehicle_ids = updated_ids
                 for vid in vehicle_ids:
                     if vid not in positions:
@@ -79,4 +92,4 @@ try:
         time.sleep(interval_seconds)
 
 except KeyboardInterrupt:
-    print("\n Simulator stopped")
+    print("\nSimulator stopped")
