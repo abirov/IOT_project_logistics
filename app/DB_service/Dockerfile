@@ -6,6 +6,4 @@ COPY . .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app/
-
-CMD ["python", "python mqtt_service.py & influxservice.py"]
+CMD ["/bin/sh", "-c", "python mqtt_service.py & python influxservice.py"]
